@@ -1,0 +1,172 @@
+-- Insert sample products
+INSERT INTO products (name, description, price, currency, category_id, supplier_id, thumbnail_url, image_urls, stock_quantity, rating, review_count, is_featured, is_new, discount_percentage)
+VALUES
+-- Flooring Category
+(
+  'Premium Ceramic Floor Tile - Marble Effect',
+  'High-quality ceramic floor tiles with elegant marble effect. Perfect for kitchens, bathrooms, and living areas. Durable, stain-resistant, and easy to clean.',
+  249.99,
+  'AED',
+  (SELECT id FROM categories WHERE name = 'Flooring' LIMIT 1),
+  (SELECT id FROM suppliers WHERE name = 'Dubai Ceramics' LIMIT 1),
+  'https://images.unsplash.com/photo-1600607686527-6fb886090705?w=500&q=80',
+  ARRAY['https://images.unsplash.com/photo-1600607686527-6fb886090705?w=800&q=80', 'https://images.unsplash.com/photo-1600607687644-c7ddd0d03d62?w=800&q=80', 'https://images.unsplash.com/photo-1600607687920-4e4a92f082f6?w=800&q=80'],
+  56,
+  4.7,
+  124,
+  true,
+  false,
+  0
+),
+(
+  'Luxury Vinyl Flooring - Wood Effect',
+  'Premium vinyl flooring with realistic wood effect. Water-resistant, durable, and easy to install. Ideal for high-traffic areas.',
+  189.99,
+  'AED',
+  (SELECT id FROM categories WHERE name = 'Flooring' LIMIT 1),
+  (SELECT id FROM suppliers WHERE name = 'Al Futtaim Building Materials' LIMIT 1),
+  'https://images.unsplash.com/photo-1581858726788-75bc0f6a952d?w=500&q=80',
+  ARRAY['https://images.unsplash.com/photo-1581858726788-75bc0f6a952d?w=800&q=80', 'https://images.unsplash.com/photo-1581229876834-176c5b6f7e5c?w=800&q=80'],
+  78,
+  4.5,
+  98,
+  false,
+  true,
+  10
+),
+(
+  'Natural Stone Flooring Tiles',
+  'Authentic natural stone tiles for indoor and outdoor use. Each tile has unique patterns and colors. Extremely durable and adds elegance to any space.',
+  349.99,
+  'AED',
+  (SELECT id FROM categories WHERE name = 'Flooring' LIMIT 1),
+  (SELECT id FROM suppliers WHERE name = 'Saudi Building Solutions' LIMIT 1),
+  'https://images.unsplash.com/photo-1604743315016-a9f473c3e776?w=500&q=80',
+  ARRAY['https://images.unsplash.com/photo-1604743315016-a9f473c3e776?w=800&q=80', 'https://images.unsplash.com/photo-1604743315293-9b3636d2f787?w=800&q=80'],
+  32,
+  4.8,
+  76,
+  true,
+  false,
+  0
+),
+
+-- Wall Coverings Category
+(
+  'Premium Interior Wall Paint - Matte Finish',
+  'High-quality interior wall paint with excellent coverage. Low VOC, washable, and long-lasting. Available in various colors.',
+  129.99,
+  'AED',
+  (SELECT id FROM categories WHERE name = 'Wall Coverings' LIMIT 1),
+  (SELECT id FROM suppliers WHERE name = 'Egyptian Construction Supplies' LIMIT 1),
+  'https://images.unsplash.com/photo-1589407361968-f0efee8f11fe?w=500&q=80',
+  ARRAY['https://images.unsplash.com/photo-1589407361968-f0efee8f11fe?w=800&q=80', 'https://images.unsplash.com/photo-1580893246395-52aead8960dc?w=800&q=80'],
+  120,
+  4.6,
+  152,
+  false,
+  false,
+  5
+),
+(
+  'Decorative 3D Wall Panels',
+  'Modern 3D wall panels to add texture and style to any room. Easy to install, paintable, and moisture-resistant.',
+  199.99,
+  'AED',
+  (SELECT id FROM categories WHERE name = 'Wall Coverings' LIMIT 1),
+  (SELECT id FROM suppliers WHERE name = 'Luxury Interiors' LIMIT 1),
+  'https://images.unsplash.com/photo-1620626011761-996317b8d101?w=500&q=80',
+  ARRAY['https://images.unsplash.com/photo-1620626011761-996317b8d101?w=800&q=80', 'https://images.unsplash.com/photo-1620626011761-996317b8d101?w=800&q=80'],
+  45,
+  4.7,
+  89,
+  true,
+  true,
+  0
+),
+
+-- Bathroom Category
+(
+  'Modern Bathroom Vanity Set',
+  'Complete bathroom vanity set including cabinet, sink, and mirror. Contemporary design with ample storage space.',
+  899.99,
+  'AED',
+  (SELECT id FROM categories WHERE name = 'Bathroom' LIMIT 1),
+  (SELECT id FROM suppliers WHERE name = 'Kuwait Home Innovations' LIMIT 1),
+  'https://images.unsplash.com/photo-1584622650111-993a426fbf0a?w=500&q=80',
+  ARRAY['https://images.unsplash.com/photo-1584622650111-993a426fbf0a?w=800&q=80', 'https://images.unsplash.com/photo-1620626011761-996317b8d101?w=800&q=80'],
+  18,
+  4.9,
+  67,
+  true,
+  false,
+  15
+),
+(
+  'Rainfall Shower Head System',
+  'Luxury rainfall shower system with handheld sprayer. Adjustable water pressure and multiple spray patterns.',
+  349.99,
+  'AED',
+  (SELECT id FROM categories WHERE name = 'Bathroom' LIMIT 1),
+  (SELECT id FROM suppliers WHERE name = 'Al Futtaim Building Materials' LIMIT 1),
+  'https://images.unsplash.com/photo-1575245121636-3f359ab4e40a?w=500&q=80',
+  ARRAY['https://images.unsplash.com/photo-1575245121636-3f359ab4e40a?w=800&q=80', 'https://images.unsplash.com/photo-1620626011761-996317b8d101?w=800&q=80'],
+  42,
+  4.7,
+  112,
+  false,
+  true,
+  0
+),
+
+-- Kitchen Category
+(
+  'Granite Kitchen Countertop',
+  'Premium granite countertop for kitchens. Heat-resistant, durable, and adds elegance to any kitchen design.',
+  1299.99,
+  'AED',
+  (SELECT id FROM categories WHERE name = 'Kitchen' LIMIT 1),
+  (SELECT id FROM suppliers WHERE name = 'Saudi Building Solutions' LIMIT 1),
+  'https://images.unsplash.com/photo-1556910103-1c02745aae4d?w=500&q=80',
+  ARRAY['https://images.unsplash.com/photo-1556910103-1c02745aae4d?w=800&q=80', 'https://images.unsplash.com/photo-1556911220-e15b29be8c8f?w=800&q=80'],
+  15,
+  4.8,
+  54,
+  true,
+  false,
+  0
+),
+(
+  'Modern Kitchen Faucet - Stainless Steel',
+  'Contemporary kitchen faucet with pull-down sprayer. Spot-resistant stainless steel finish and easy installation.',
+  249.99,
+  'AED',
+  (SELECT id FROM categories WHERE name = 'Kitchen' LIMIT 1),
+  (SELECT id FROM suppliers WHERE name = 'Kuwait Home Innovations' LIMIT 1),
+  'https://images.unsplash.com/photo-1585909695284-32d2985ac9c0?w=500&q=80',
+  ARRAY['https://images.unsplash.com/photo-1585909695284-32d2985ac9c0?w=800&q=80', 'https://images.unsplash.com/photo-1584622650111-993a426fbf0a?w=800&q=80'],
+  38,
+  4.6,
+  87,
+  false,
+  false,
+  10
+),
+
+-- Lighting Category
+(
+  'Modern Pendant Light Fixture',
+  'Contemporary pendant light fixture for dining areas and kitchens. Adjustable height and compatible with LED bulbs.',
+  179.99,
+  'AED',
+  (SELECT id FROM categories WHERE name = 'Lighting' LIMIT 1),
+  (SELECT id FROM suppliers WHERE name = 'Luxury Interiors' LIMIT 1),
+  'https://images.unsplash.com/photo-1540932239986-30128078f3c5?w=500&q=80',
+  ARRAY['https://images.unsplash.com/photo-1540932239986-30128078f3c5?w=800&q=80', 'https://images.unsplash.com/photo-1513506003901-1e6a229e2d15?w=800&q=80'],
+  52,
+  4.5,
+  93,
+  true,
+  true,
+  0
+);
