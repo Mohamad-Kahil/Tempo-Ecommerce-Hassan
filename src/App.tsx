@@ -5,6 +5,7 @@ import CartPage from "./components/cart/CartPage";
 import Login from "./components/auth/Login";
 import SignUp from "./components/auth/SignUp";
 import ProfilePage from "./components/profile/ProfilePage";
+import AdminDashboard from "./components/admin/AdminDashboard";
 import { AuthProvider, useAuth } from "./context/AuthContext";
 import routes from "tempo-routes";
 import ProductPage from "./pages/product/[id]";
@@ -27,10 +28,25 @@ const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
   return <>{children}</>;
 };
 
+const AdminRoute = ({ children }: ProtectedRouteProps) => {
+  const { isLoading } = useAuth();
+
+  if (isLoading) {
+    return <p>Loading...</p>;
+  }
+
+  return <>{children}</>;
+};
+
 function AppRoutes() {
+  // Use the tempo routes
+  const tempoRoutes =
+    import.meta.env.VITE_TEMPO === "true" ? useRoutes(routes) : null;
+
   return (
     <Suspense fallback={<p>Loading...</p>}>
       <>
+        {tempoRoutes}
         <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/login" element={<Login />} />
@@ -52,13 +68,20 @@ function AppRoutes() {
               </ProtectedRoute>
             }
           />
+          <Route
+            path="/admin"
+            element={
+              <AdminRoute>
+                <AdminDashboard />
+              </AdminRoute>
+            }
+          />
           {/* Add this before the catchall route */}
           {import.meta.env.VITE_TEMPO === "true" && (
-            <Route path="/tempobook/*" />
+            <Route path="/tempobook/*" element={<div />} />
           )}
           <Route path="*" element={<Navigate to="/" />} />
         </Routes>
-        {import.meta.env.VITE_TEMPO === "true" && useRoutes(routes)}
       </>
     </Suspense>
   );

@@ -7,6 +7,7 @@ interface AuthContextType {
   user: User | null;
   isLoading: boolean;
   isAuthenticated: boolean;
+  isAdmin: boolean;
   logout: () => Promise<void>;
   refreshUser: () => Promise<void>;
 }
@@ -74,10 +75,14 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     };
   }, []);
 
+  // Check if user has admin role
+  const isAdmin = !!user && user.app_metadata?.role === "admin";
+
   const value = {
     user,
     isLoading,
     isAuthenticated: !!user,
+    isAdmin,
     logout: handleLogout,
     refreshUser,
   };

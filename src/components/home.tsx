@@ -67,12 +67,24 @@ const AdvertBanner = ({
 
 const Header = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = React.useState(false);
-  const { user, isAuthenticated, logout } = useAuth();
+  const [searchValue, setSearchValue] = React.useState("");
+  const { user, isAuthenticated, isAdmin, logout } = useAuth();
   const navigate = useNavigate();
 
   const handleLogout = async () => {
     await logout();
     navigate("/");
+  };
+
+  const handleSearch = (e) => {
+    setSearchValue(e.target.value);
+  };
+
+  const handleSearchSubmit = (e) => {
+    e.preventDefault();
+    if (searchValue.trim()) {
+      navigate(`/search?q=${encodeURIComponent(searchValue)}`);
+    }
   };
 
   return (
@@ -117,6 +129,11 @@ const Header = () => {
                     <User className="h-5 w-5" />
                   </Button>
                 </Link>
+                <Link to="/admin">
+                  <Button variant="outline" size="sm" className="mr-2">
+                    Admin CMS
+                  </Button>
+                </Link>
                 <Button variant="ghost" size="icon" onClick={handleLogout}>
                   <LogOut className="h-5 w-5" />
                 </Button>
@@ -155,13 +172,17 @@ const Header = () => {
 
         {/* Search bar */}
         <div className="py-3">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Search for products, brands, categories..."
-              className="pl-10 pr-4 py-2 w-full"
-            />
-          </div>
+          <form onSubmit={handleSearchSubmit}>
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Search for products, brands, categories..."
+                className="pl-10 pr-4 py-2 w-full"
+                value={searchValue}
+                onChange={handleSearch}
+              />
+            </div>
+          </form>
         </div>
       </div>
 
@@ -199,6 +220,12 @@ const Header = () => {
             >
               Contact
             </a>
+            <Link
+              to="/admin"
+              className="block py-2 text-sm font-medium hover:text-primary"
+            >
+              Admin CMS
+            </Link>
             {isAuthenticated ? (
               <>
                 <Link
