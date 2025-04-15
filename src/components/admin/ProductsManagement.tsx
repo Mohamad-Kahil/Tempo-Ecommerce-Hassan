@@ -11,7 +11,6 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
   SelectContent,
@@ -23,23 +22,20 @@ import {
   Trash2,
   Plus,
   Edit,
-  Save,
-  X,
   Search,
   Filter,
   ChevronLeft,
   ChevronRight,
-  Upload,
   CheckSquare,
   Square,
   AlertCircle,
   Image,
-  Loader2,
   DollarSign,
   Tag,
   Layers,
   Package,
 } from "lucide-react";
+import ProductForm from "./ProductForm";
 import { Tables } from "@/types/supabase";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -54,6 +50,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { toast } from "@/components/ui/use-toast";
 import { Progress } from "@/components/ui/progress";
+import { useProductValidation } from "@/hooks/useProductValidation";
 
 type Product = Tables<"products">;
 type Category = Tables<"categories">;
@@ -70,17 +67,21 @@ const ProductsManagement = () => {
     name: "",
     description: "",
     price: 0,
-    stock_quantity: 0,
+    stock: 0,
     category_id: null,
     image_urls: [],
     specifications: {},
+    features: [],
     is_featured: false,
     sku: "",
+    regions: ["all"],
+    discount: 0,
+    delivery_time: "",
   });
   // State to control the visibility of the add product form
   const [isAdding, setIsAdding] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
-  const [errors, setErrors] = useState<Record<string, string>>({});
+  // Using the custom validation hook instead of local errors state
 
   // Image upload states
   const [isUploading, setIsUploading] = useState(false);
@@ -152,46 +153,8 @@ const ProductsManagement = () => {
     }
   };
 
-  const validateForm = (product: Partial<Product>) => {
-    const newErrors: Record<string, string> = {};
-
-    // Name validation
-    if (!product.name || product.name.trim() === "") {
-      newErrors.name = "Name is required";
-    } else if (product.name.length < 2) {
-      newErrors.name = "Name must be at least 2 characters long";
-    } else if (product.name.length > 100) {
-      newErrors.name = "Name must be less than 100 characters long";
-    }
-
-    // Price validation
-    if (product.price === undefined || product.price === null) {
-      newErrors.price = "Price is required";
-    } else if (product.price < 0) {
-      newErrors.price = "Price cannot be negative";
-    }
-
-    // Stock validation
-    if (
-      product.stock_quantity === undefined ||
-      product.stock_quantity === null
-    ) {
-      newErrors.stock_quantity = "Stock quantity is required";
-    } else if (product.stock_quantity < 0) {
-      newErrors.stock_quantity = "Stock quantity cannot be negative";
-    }
-
-    // SKU validation
-    if (!product.sku || product.sku.trim() === "") {
-      newErrors.sku = "SKU is required";
-    } else if (!/^[A-Za-z0-9-_]+$/.test(product.sku)) {
-      newErrors.sku =
-        "SKU can only contain letters, numbers, hyphens, and underscores";
-    }
-
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
+  // Using the custom validation hook
+  const { errors, validateForm, clearErrors } = useProductValidation();
 
   const uploadImage = async (file: File): Promise<string | null> => {
     try {
@@ -214,6 +177,11 @@ const ProductsManagement = () => {
       }, 100);
 
       console.log("Uploading file to path:", filePath);
+
+      // We've created the bucket in migrations, so we don't need to check/create it here
+      // Just log that we're using the images bucket
+      console.log("Using the images bucket for storage");
+
       const { error: uploadError, data } = await supabase.storage
         .from("images")
         .upload(filePath, file, {
@@ -297,15 +265,28 @@ const ProductsManagement = () => {
 
       if (imageUrl) {
         if (isEdit && editingProduct) {
-          const updatedImageUrls = [...(editingProduct.image_urls || [])];
+          // Ensure image_urls is an array
+          const currentUrls = Array.isArray(editingProduct.image_urls)
+            ? editingProduct.image_urls
+            : [];
+          const updatedImageUrls = [...currentUrls];
           updatedImageUrls.push(imageUrl);
+          console.log(
+            "Updated image URLs for editing product:",
+            updatedImageUrls,
+          );
           setEditingProduct({
             ...editingProduct,
             image_urls: updatedImageUrls,
           });
         } else {
-          const updatedImageUrls = [...(newProduct.image_urls || [])];
+          // Ensure image_urls is an array
+          const currentUrls = Array.isArray(newProduct.image_urls)
+            ? newProduct.image_urls
+            : [];
+          const updatedImageUrls = [...currentUrls];
           updatedImageUrls.push(imageUrl);
+          console.log("Updated image URLs for new product:", updatedImageUrls);
           setNewProduct({
             ...newProduct,
             image_urls: updatedImageUrls,
@@ -335,15 +316,35 @@ const ProductsManagement = () => {
 
   const removeImage = (index: number, isEdit = false) => {
     if (isEdit && editingProduct) {
-      const updatedImageUrls = [...(editingProduct.image_urls || [])];
+      // Ensure image_urls is an array
+      const currentUrls = Array.isArray(editingProduct.image_urls)
+        ? editingProduct.image_urls
+        : [];
+      const updatedImageUrls = [...currentUrls];
       updatedImageUrls.splice(index, 1);
+      console.log(
+        "Removed image at index",
+        index,
+        "new urls:",
+        updatedImageUrls,
+      );
       setEditingProduct({
         ...editingProduct,
         image_urls: updatedImageUrls,
       });
     } else {
-      const updatedImageUrls = [...(newProduct.image_urls || [])];
+      // Ensure image_urls is an array
+      const currentUrls = Array.isArray(newProduct.image_urls)
+        ? newProduct.image_urls
+        : [];
+      const updatedImageUrls = [...currentUrls];
       updatedImageUrls.splice(index, 1);
+      console.log(
+        "Removed image at index",
+        index,
+        "new urls:",
+        updatedImageUrls,
+      );
       setNewProduct({
         ...newProduct,
         image_urls: updatedImageUrls,
@@ -356,6 +357,25 @@ const ProductsManagement = () => {
 
     try {
       setIsSaving(true);
+      console.log("Adding product:", newProduct);
+
+      // Ensure image_urls is an array
+      const imageUrls = Array.isArray(newProduct.image_urls)
+        ? newProduct.image_urls
+        : [];
+
+      // First check if we need to make supplier_id null
+      const { data: supplierData, error: supplierError } = await supabase
+        .from("suppliers")
+        .select("id")
+        .eq("id", "00000000-0000-0000-0000-000000000000")
+        .single();
+
+      // If default supplier doesn't exist, make supplier_id null
+      const useSupplier =
+        !supplierError && supplierData
+          ? "00000000-0000-0000-0000-000000000000"
+          : null;
 
       const { data, error } = await supabase
         .from("products")
@@ -364,30 +384,48 @@ const ProductsManagement = () => {
             name: newProduct.name,
             description: newProduct.description || "",
             price: newProduct.price || 0,
-            stock_quantity: newProduct.stock_quantity || 0,
-            category_id: newProduct.category_id || null,
-            image_urls: newProduct.image_urls || [],
+            stock: newProduct.stock || 0,
+            category_id:
+              newProduct.category_id === "uncategorized"
+                ? null
+                : newProduct.category_id,
+            image_urls: imageUrls,
             specifications: newProduct.specifications || {},
+            features: newProduct.features || [],
             is_featured: newProduct.is_featured || false,
             sku: newProduct.sku || "",
+            currency: "USD", // Default currency
+            supplier_id: useSupplier, // Use default supplier ID if it exists, otherwise null
+            regions: newProduct.regions || ["all"],
+            discount: newProduct.discount || 0,
+            delivery_time: newProduct.delivery_time || null,
+            slug: newProduct.name?.toLowerCase().replace(/\s+/g, "-") || "", // Generate slug from name
           },
         ])
         .select();
 
-      if (error) throw error;
+      if (error) {
+        console.error("Error adding product:", error);
+        throw error;
+      }
 
       if (data) {
+        console.log("Product added successfully:", data);
         setAllProducts([...allProducts, ...data]);
         setNewProduct({
           name: "",
           description: "",
           price: 0,
-          stock_quantity: 0,
+          stock: 0,
           category_id: null,
           image_urls: [],
           specifications: {},
+          features: [],
           is_featured: false,
           sku: "",
+          regions: ["all"],
+          discount: 0,
+          delivery_time: "",
         });
         setIsAdding(false);
         toast({
@@ -412,6 +450,25 @@ const ProductsManagement = () => {
 
     try {
       setIsSaving(true);
+      console.log("Updating product:", editingProduct);
+
+      // Ensure image_urls is an array
+      const imageUrls = Array.isArray(editingProduct.image_urls)
+        ? editingProduct.image_urls
+        : [];
+
+      // First check if we need to make supplier_id null
+      const { data: supplierData, error: supplierError } = await supabase
+        .from("suppliers")
+        .select("id")
+        .eq("id", "00000000-0000-0000-0000-000000000000")
+        .single();
+
+      // If default supplier doesn't exist, make supplier_id null
+      const useSupplier =
+        !supplierError && supplierData
+          ? "00000000-0000-0000-0000-000000000000"
+          : null;
 
       const { data, error } = await supabase
         .from("products")
@@ -419,19 +476,31 @@ const ProductsManagement = () => {
           name: editingProduct.name,
           description: editingProduct.description,
           price: editingProduct.price,
-          stock_quantity: editingProduct.stock_quantity,
-          category_id: editingProduct.category_id,
-          image_urls: editingProduct.image_urls,
-          specifications: editingProduct.specifications,
+          stock: editingProduct.stock,
+          category_id:
+            editingProduct.category_id === "uncategorized"
+              ? null
+              : editingProduct.category_id,
+          image_urls: imageUrls,
+          specifications: editingProduct.specifications || {},
+          features: editingProduct.features || [],
           is_featured: editingProduct.is_featured,
           sku: editingProduct.sku,
+          supplier_id: useSupplier, // Use default supplier ID if it exists, otherwise null
+          regions: editingProduct.regions || ["all"],
+          discount: editingProduct.discount || 0,
+          delivery_time: editingProduct.delivery_time || null,
         })
         .eq("id", editingProduct.id)
         .select();
 
-      if (error) throw error;
+      if (error) {
+        console.error("Error updating product:", error);
+        throw error;
+      }
 
       if (data) {
+        console.log("Product updated successfully:", data);
         setAllProducts(
           allProducts.map((prod) =>
             prod.id === editingProduct.id ? data[0] : prod,
@@ -533,7 +602,7 @@ const ProductsManagement = () => {
 
   const handleCancelEdit = () => {
     setEditingProduct(null);
-    setErrors({});
+    clearErrors();
   };
 
   const handleCancelAdd = () => {
@@ -542,14 +611,18 @@ const ProductsManagement = () => {
       name: "",
       description: "",
       price: 0,
-      stock_quantity: 0,
+      stock: 0,
       category_id: null,
       image_urls: [],
       specifications: {},
+      features: [],
       is_featured: false,
       sku: "",
+      regions: ["all"],
+      discount: 0,
+      delivery_time: "",
     });
-    setErrors({});
+    clearErrors();
   };
 
   // Apply filters and pagination to products
@@ -689,7 +762,9 @@ const ProductsManagement = () => {
                         <SelectValue placeholder="All categories" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="">All categories</SelectItem>
+                        <SelectItem value="all-categories">
+                          All categories
+                        </SelectItem>
                         {categories.map((category) => (
                           <SelectItem key={category.id} value={category.id}>
                             {category.name}
@@ -738,218 +813,20 @@ const ProductsManagement = () => {
                 <CardTitle>Add New Product</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="grid gap-4">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="new-name">Product Name</Label>
-                      <Input
-                        id="new-name"
-                        value={newProduct.name}
-                        onChange={(e) =>
-                          setNewProduct({
-                            ...newProduct,
-                            name: e.target.value,
-                          })
-                        }
-                        placeholder="Product name"
-                      />
-                      {errors.name && (
-                        <p className="text-sm text-red-500">{errors.name}</p>
-                      )}
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="new-sku">SKU</Label>
-                      <Input
-                        id="new-sku"
-                        value={newProduct.sku}
-                        onChange={(e) =>
-                          setNewProduct({
-                            ...newProduct,
-                            sku: e.target.value,
-                          })
-                        }
-                        placeholder="SKU-12345"
-                      />
-                      {errors.sku && (
-                        <p className="text-sm text-red-500">{errors.sku}</p>
-                      )}
-                    </div>
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="new-description">Description</Label>
-                    <Textarea
-                      id="new-description"
-                      value={newProduct.description || ""}
-                      onChange={(e) =>
-                        setNewProduct({
-                          ...newProduct,
-                          description: e.target.value,
-                        })
-                      }
-                      placeholder="Product description"
-                    />
-                  </div>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="new-price">Price</Label>
-                      <div className="relative">
-                        <DollarSign className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-                        <Input
-                          id="new-price"
-                          type="number"
-                          value={newProduct.price}
-                          onChange={(e) =>
-                            setNewProduct({
-                              ...newProduct,
-                              price: parseFloat(e.target.value),
-                            })
-                          }
-                          placeholder="0.00"
-                          className="pl-8"
-                        />
-                      </div>
-                      {errors.price && (
-                        <p className="text-sm text-red-500">{errors.price}</p>
-                      )}
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="new-stock">Stock Quantity</Label>
-                      <div className="relative">
-                        <Package className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-                        <Input
-                          id="new-stock"
-                          type="number"
-                          value={newProduct.stock_quantity}
-                          onChange={(e) =>
-                            setNewProduct({
-                              ...newProduct,
-                              stock_quantity: parseInt(e.target.value),
-                            })
-                          }
-                          placeholder="0"
-                          className="pl-8"
-                        />
-                      </div>
-                      {errors.stock_quantity && (
-                        <p className="text-sm text-red-500">
-                          {errors.stock_quantity}
-                        </p>
-                      )}
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="new-category">Category</Label>
-                      <Select
-                        value={newProduct.category_id || ""}
-                        onValueChange={(value) =>
-                          setNewProduct({
-                            ...newProduct,
-                            category_id: value || null,
-                          })
-                        }
-                      >
-                        <SelectTrigger id="new-category">
-                          <SelectValue placeholder="Select category" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="">Uncategorized</SelectItem>
-                          {categories.map((category) => (
-                            <SelectItem key={category.id} value={category.id}>
-                              {category.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
-                  <div className="space-y-2">
-                    <div className="flex items-center space-x-2">
-                      <Checkbox
-                        id="new-featured"
-                        checked={newProduct.is_featured}
-                        onCheckedChange={(checked) =>
-                          setNewProduct({
-                            ...newProduct,
-                            is_featured: checked as boolean,
-                          })
-                        }
-                      />
-                      <Label htmlFor="new-featured">Featured Product</Label>
-                    </div>
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Product Images</Label>
-                    <div className="grid grid-cols-1 gap-4">
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <div className="relative flex-1">
-                            <Input
-                              type="file"
-                              ref={fileInputRef}
-                              className="absolute inset-0 opacity-0 cursor-pointer z-10"
-                              accept="image/jpeg,image/png,image/gif,image/webp"
-                              onChange={(e) => handleImageSelect(e)}
-                              disabled={isUploading}
-                              onClick={(e) => console.log("File input clicked")}
-                            />
-                            <Button
-                              type="button"
-                              variant="outline"
-                              disabled={isUploading}
-                              className="w-full relative flex items-center justify-center"
-                              onClick={() => fileInputRef.current?.click()}
-                            >
-                              {isUploading ? (
-                                <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                              ) : (
-                                <Upload className="h-4 w-4 mr-2" />
-                              )}
-                              Upload Image
-                            </Button>
-                          </div>
-                        </div>
-                        {isUploading && (
-                          <div className="mt-2">
-                            <Progress value={uploadProgress} className="h-2" />
-                            <p className="text-xs text-center mt-1">
-                              {uploadProgress}%
-                            </p>
-                          </div>
-                        )}
-                      </div>
-                      {newProduct.image_urls &&
-                        newProduct.image_urls.length > 0 && (
-                          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-4">
-                            {newProduct.image_urls.map((url, index) => (
-                              <div key={index} className="relative group">
-                                <img
-                                  src={url}
-                                  alt={`Product image ${index + 1}`}
-                                  className="w-full h-32 object-cover rounded-md"
-                                />
-                                <Button
-                                  type="button"
-                                  variant="destructive"
-                                  size="sm"
-                                  className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity"
-                                  onClick={() => removeImage(index)}
-                                >
-                                  <X className="h-4 w-4" />
-                                </Button>
-                              </div>
-                            ))}
-                          </div>
-                        )}
-                    </div>
-                  </div>
-                  <div className="flex justify-end space-x-2">
-                    <Button variant="outline" onClick={handleCancelAdd}>
-                      Cancel
-                    </Button>
-                    <Button onClick={handleAddProduct} disabled={isSaving}>
-                      {isSaving ? "Saving..." : "Save Product"}
-                    </Button>
-                  </div>
-                </div>
+                <ProductForm
+                  product={newProduct}
+                  setProduct={setNewProduct}
+                  categories={categories}
+                  errors={errors}
+                  isUploading={isUploading}
+                  uploadProgress={uploadProgress}
+                  isSaving={isSaving}
+                  fileInputRef={fileInputRef}
+                  handleImageSelect={handleImageSelect}
+                  removeImage={removeImage}
+                  onSave={handleAddProduct}
+                  onCancel={handleCancelAdd}
+                />
               </CardContent>
             </Card>
           )}
@@ -992,259 +869,21 @@ const ProductsManagement = () => {
                 >
                   {editingProduct?.id === product.id ? (
                     <CardContent className="p-4">
-                      <div className="grid gap-4">
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          <div className="space-y-2">
-                            <Label htmlFor={`edit-name-${product.id}`}>
-                              Product Name
-                            </Label>
-                            <Input
-                              id={`edit-name-${product.id}`}
-                              value={editingProduct.name}
-                              onChange={(e) =>
-                                setEditingProduct({
-                                  ...editingProduct,
-                                  name: e.target.value,
-                                })
-                              }
-                            />
-                            {errors.name && (
-                              <p className="text-sm text-red-500">
-                                {errors.name}
-                              </p>
-                            )}
-                          </div>
-                          <div className="space-y-2">
-                            <Label htmlFor={`edit-sku-${product.id}`}>
-                              SKU
-                            </Label>
-                            <Input
-                              id={`edit-sku-${product.id}`}
-                              value={editingProduct.sku}
-                              onChange={(e) =>
-                                setEditingProduct({
-                                  ...editingProduct,
-                                  sku: e.target.value,
-                                })
-                              }
-                            />
-                            {errors.sku && (
-                              <p className="text-sm text-red-500">
-                                {errors.sku}
-                              </p>
-                            )}
-                          </div>
-                        </div>
-                        <div className="space-y-2">
-                          <Label htmlFor={`edit-description-${product.id}`}>
-                            Description
-                          </Label>
-                          <Textarea
-                            id={`edit-description-${product.id}`}
-                            value={editingProduct.description || ""}
-                            onChange={(e) =>
-                              setEditingProduct({
-                                ...editingProduct,
-                                description: e.target.value,
-                              })
-                            }
-                          />
-                        </div>
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                          <div className="space-y-2">
-                            <Label htmlFor={`edit-price-${product.id}`}>
-                              Price
-                            </Label>
-                            <div className="relative">
-                              <DollarSign className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-                              <Input
-                                id={`edit-price-${product.id}`}
-                                type="number"
-                                value={editingProduct.price}
-                                onChange={(e) =>
-                                  setEditingProduct({
-                                    ...editingProduct,
-                                    price: parseFloat(e.target.value),
-                                  })
-                                }
-                                className="pl-8"
-                              />
-                            </div>
-                            {errors.price && (
-                              <p className="text-sm text-red-500">
-                                {errors.price}
-                              </p>
-                            )}
-                          </div>
-                          <div className="space-y-2">
-                            <Label htmlFor={`edit-stock-${product.id}`}>
-                              Stock Quantity
-                            </Label>
-                            <div className="relative">
-                              <Package className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-                              <Input
-                                id={`edit-stock-${product.id}`}
-                                type="number"
-                                value={editingProduct.stock_quantity}
-                                onChange={(e) =>
-                                  setEditingProduct({
-                                    ...editingProduct,
-                                    stock_quantity: parseInt(e.target.value),
-                                  })
-                                }
-                                className="pl-8"
-                              />
-                            </div>
-                            {errors.stock_quantity && (
-                              <p className="text-sm text-red-500">
-                                {errors.stock_quantity}
-                              </p>
-                            )}
-                          </div>
-                          <div className="space-y-2">
-                            <Label htmlFor={`edit-category-${product.id}`}>
-                              Category
-                            </Label>
-                            <Select
-                              value={editingProduct.category_id || ""}
-                              onValueChange={(value) =>
-                                setEditingProduct({
-                                  ...editingProduct,
-                                  category_id: value || null,
-                                })
-                              }
-                            >
-                              <SelectTrigger id={`edit-category-${product.id}`}>
-                                <SelectValue placeholder="Select category" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="">Uncategorized</SelectItem>
-                                {categories.map((category) => (
-                                  <SelectItem
-                                    key={category.id}
-                                    value={category.id}
-                                  >
-                                    {category.name}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                          </div>
-                        </div>
-                        <div className="space-y-2">
-                          <div className="flex items-center space-x-2">
-                            <Checkbox
-                              id={`edit-featured-${product.id}`}
-                              checked={editingProduct.is_featured}
-                              onCheckedChange={(checked) =>
-                                setEditingProduct({
-                                  ...editingProduct,
-                                  is_featured: checked as boolean,
-                                })
-                              }
-                            />
-                            <Label htmlFor={`edit-featured-${product.id}`}>
-                              Featured Product
-                            </Label>
-                          </div>
-                        </div>
-                        <div className="space-y-2">
-                          <Label>Product Images</Label>
-                          <div className="grid grid-cols-1 gap-4">
-                            <div>
-                              <div className="flex items-center gap-2">
-                                <div className="relative flex-1">
-                                  <Input
-                                    type="file"
-                                    ref={editFileInputRef}
-                                    className="absolute inset-0 opacity-0 cursor-pointer z-10"
-                                    accept="image/jpeg,image/png,image/gif,image/webp"
-                                    onChange={(e) => handleImageSelect(e, true)}
-                                    disabled={isUploading}
-                                    onClick={(e) =>
-                                      console.log("Edit file input clicked")
-                                    }
-                                  />
-                                  <Button
-                                    type="button"
-                                    variant="outline"
-                                    disabled={isUploading}
-                                    className="w-full relative flex items-center justify-center"
-                                    onClick={() =>
-                                      editFileInputRef.current?.click()
-                                    }
-                                  >
-                                    {isUploading ? (
-                                      <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                                    ) : (
-                                      <Upload className="h-4 w-4 mr-2" />
-                                    )}
-                                    Upload Image
-                                  </Button>
-                                </div>
-                              </div>
-                              {isUploading && (
-                                <div className="mt-2">
-                                  <Progress
-                                    value={uploadProgress}
-                                    className="h-2"
-                                  />
-                                  <p className="text-xs text-center mt-1">
-                                    {uploadProgress}%
-                                  </p>
-                                </div>
-                              )}
-                            </div>
-                            {editingProduct.image_urls &&
-                              editingProduct.image_urls.length > 0 && (
-                                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-4">
-                                  {editingProduct.image_urls.map(
-                                    (url, index) => (
-                                      <div
-                                        key={index}
-                                        className="relative group"
-                                      >
-                                        <img
-                                          src={url}
-                                          alt={`Product image ${index + 1}`}
-                                          className="w-full h-32 object-cover rounded-md"
-                                        />
-                                        <Button
-                                          type="button"
-                                          variant="destructive"
-                                          size="sm"
-                                          className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity"
-                                          onClick={() =>
-                                            removeImage(index, true)
-                                          }
-                                        >
-                                          <X className="h-4 w-4" />
-                                        </Button>
-                                      </div>
-                                    ),
-                                  )}
-                                </div>
-                              )}
-                          </div>
-                        </div>
-                        <div className="flex justify-end space-x-2">
-                          <Button variant="outline" onClick={handleCancelEdit}>
-                            <X className="mr-2 h-4 w-4" /> Cancel
-                          </Button>
-                          <Button
-                            onClick={handleUpdateProduct}
-                            disabled={isSaving}
-                          >
-                            {isSaving ? (
-                              "Saving..."
-                            ) : (
-                              <>
-                                <Save className="mr-2 h-4 w-4" /> Save Changes
-                              </>
-                            )}
-                          </Button>
-                        </div>
-                      </div>
+                      <ProductForm
+                        product={editingProduct}
+                        setProduct={setEditingProduct}
+                        categories={categories}
+                        errors={errors}
+                        isUploading={isUploading}
+                        uploadProgress={uploadProgress}
+                        isSaving={isSaving}
+                        fileInputRef={editFileInputRef}
+                        handleImageSelect={handleImageSelect}
+                        removeImage={removeImage}
+                        onSave={handleUpdateProduct}
+                        onCancel={handleCancelEdit}
+                        isEdit={true}
+                      />
                     </CardContent>
                   ) : (
                     <CardContent className="p-4">
@@ -1279,7 +918,7 @@ const ProductsManagement = () => {
                                   ${product.price.toFixed(2)}
                                 </p>
                                 <p className="ml-4 text-sm">
-                                  Stock: {product.stock_quantity}
+                                  Stock: {product.stock}
                                 </p>
                               </div>
                             </div>

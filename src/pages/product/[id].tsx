@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useParams, Link } from "react-router-dom";
 import {
   ChevronLeft,
@@ -19,15 +19,20 @@ import ProductGallery from "@/components/product/ProductGallery";
 import ProductCard from "@/components/product/ProductCard";
 import { useAuth } from "@/context/AuthContext";
 import { useNavigate } from "react-router-dom";
+import { useProduct, useProducts } from "@/hooks/useProducts";
 
 const ProductPage = () => {
   const { id } = useParams<{ id: string }>();
   const [quantity, setQuantity] = useState(1);
   const { isAuthenticated } = useAuth();
   const navigate = useNavigate();
+  const { product: dbProduct, loading, error } = useProduct(id);
+  const { products: relatedDbProducts, loading: relatedLoading } = useProducts({
+    limit: 4,
+  });
 
-  // Mock product data - would be fetched from API in real implementation
-  const product = {
+  // Fallback product data if database fetch fails
+  const fallbackProduct = {
     id: id || "1",
     name: "Premium Ceramic Floor Tile - Marble Effect",
     description:
@@ -70,8 +75,33 @@ const ProductPage = () => {
     tags: ["ceramic", "tile", "marble-effect", "flooring", "interior"],
   };
 
-  // Mock related products
-  const relatedProducts = [
+  // Use database product if available, otherwise use fallback
+  const product = dbProduct
+    ? {
+        id: dbProduct.id,
+        name: dbProduct.name || fallbackProduct.name,
+        description: dbProduct.description || fallbackProduct.description,
+        price: dbProduct.price || fallbackProduct.price,
+        currency: dbProduct.currency || "USD",
+        rating: dbProduct.rating || 4.5,
+        reviewCount: dbProduct.review_count || 0,
+        stock: dbProduct.stock || 0,
+        sku: dbProduct.sku || "N/A",
+        brand: dbProduct.brand || "N/A",
+        supplier: dbProduct.supplier_name || "Unknown Supplier",
+        category: dbProduct.category_name || "Uncategorized",
+        images: dbProduct.image_urls || fallbackProduct.images,
+        specifications:
+          dbProduct.specifications || fallbackProduct.specifications,
+        features: dbProduct.features || fallbackProduct.features,
+        regions: dbProduct.regions || fallbackProduct.regions,
+        deliveryTime: dbProduct.delivery_time || "3-5 business days",
+        tags: dbProduct.tags || fallbackProduct.tags,
+      }
+    : fallbackProduct;
+
+  // Fallback related products if database fetch fails
+  const fallbackRelatedProducts = [
     {
       id: "2",
       name: "Tile Adhesive - Premium Grade",
@@ -117,6 +147,23 @@ const ProductPage = () => {
       supplier: "Tools & More",
     },
   ];
+
+  // Use database related products if available, otherwise use fallback
+  const relatedProducts =
+    relatedDbProducts && relatedDbProducts.length > 0
+      ? relatedDbProducts.map((p) => ({
+          id: p.id,
+          name: p.name || "",
+          price: p.price || 0,
+          currency: p.currency || "USD",
+          rating: p.rating || 4.5,
+          reviewCount: p.review_count || 0,
+          image:
+            p.image_urls?.[0] ||
+            "https://images.unsplash.com/photo-1581091226033-d5c48150dbaa?w=800&q=80",
+          supplier: p.supplier_name || "Unknown Supplier",
+        }))
+      : fallbackRelatedProducts;
 
   const incrementQuantity = () => setQuantity((prev) => prev + 1);
   const decrementQuantity = () =>
@@ -168,7 +215,19 @@ const ProductPage = () => {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           {/* Product Gallery */}
           <div className="bg-white rounded-xl p-4 shadow-sm">
-            <ProductGallery productId={id} productName={product.name} />
+            {loading ? (
+              <div className="h-[400px] w-full bg-gray-100 animate-pulse rounded-md"></div>
+            ) : error ? (
+              <div className="h-[400px] w-full flex items-center justify-center bg-gray-100 rounded-md">
+                <p className="text-red-500">Error loading product images</p>
+              </div>
+            ) : (
+              <ProductGallery
+                productId={id}
+                productName={product.name}
+                images={product.images}
+              />
+            )}
           </div>
 
           {/* Product Info */}
@@ -408,21 +467,32 @@ const ProductPage = () => {
       {/* Related Products */}
       <div className="container mx-auto px-4 py-8">
         <h2 className="text-2xl font-bold mb-6">Recommended Products</h2>
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-          {relatedProducts.map((product) => (
-            <ProductCard
-              key={product.id}
-              id={product.id}
-              name={product.name}
-              price={product.price}
-              currency={product.currency}
-              rating={product.rating}
-              reviewCount={product.reviewCount}
-              image={product.image}
-              supplier={product.supplier}
-            />
-          ))}
-        </div>
+        {relatedLoading ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+            {[...Array(4)].map((_, index) => (
+              <div
+                key={index}
+                className="w-full h-[380px] bg-gray-100 animate-pulse rounded-md"
+              ></div>
+            ))}
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+            {relatedProducts.map((product) => (
+              <ProductCard
+                key={product.id}
+                id={product.id}
+                name={product.name}
+                price={product.price}
+                currency={product.currency}
+                rating={product.rating}
+                reviewCount={product.reviewCount}
+                image={product.image}
+                supplier={product.supplier}
+              />
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Supplier Advertisement */}

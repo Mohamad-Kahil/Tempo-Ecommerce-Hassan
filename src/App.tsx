@@ -45,44 +45,51 @@ function AppRoutes() {
 
   return (
     <Suspense fallback={<p>Loading...</p>}>
-      <>
-        {tempoRoutes}
-        <Routes>
-          <Route path="/" element={<Home />} />
-          <Route path="/login" element={<Login />} />
-          <Route path="/signup" element={<SignUp />} />
-          <Route path="/product/:id" element={<ProductPage />} />
-          <Route
-            path="/profile"
-            element={
-              <ProtectedRoute>
-                <ProfilePage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/cart"
-            element={
-              <ProtectedRoute>
-                <CartPage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/admin"
-            element={
-              <AdminRoute>
-                <AdminDashboard />
-              </AdminRoute>
-            }
-          />
-          {/* Add this before the catchall route */}
-          {import.meta.env.VITE_TEMPO === "true" && (
-            <Route path="/tempobook/*" element={<div />} />
-          )}
-          <Route path="*" element={<Navigate to="/" />} />
-        </Routes>
-      </>
+      {/* Render tempo routes outside of the Routes component */}
+      {tempoRoutes}
+      <Routes>
+        <Route path="/" element={<Home />} />
+        <Route path="/login" element={<Login />} />
+        <Route path="/signup" element={<SignUp />} />
+        <Route path="/product/:id" element={<ProductPage />} />
+        <Route
+          path="/profile"
+          element={
+            <ProtectedRoute>
+              <ProfilePage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/cart"
+          element={
+            <ProtectedRoute>
+              <CartPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin"
+          element={
+            <AdminRoute>
+              <AdminDashboard />
+            </AdminRoute>
+          }
+        />
+        <Route
+          path="/admin/*"
+          element={
+            <AdminRoute>
+              <AdminDashboard />
+            </AdminRoute>
+          }
+        />
+        {/* Add this before the catchall route */}
+        {import.meta.env.VITE_TEMPO === "true" && (
+          <Route path="/tempobook/*" element={<div />} />
+        )}
+        <Route path="*" element={<Navigate to="/" />} />
+      </Routes>
     </Suspense>
   );
 }

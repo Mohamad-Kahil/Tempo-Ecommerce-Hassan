@@ -428,11 +428,15 @@ const FeaturedProducts = () => {
             id={product.id}
             name={product.name}
             price={product.price}
-            currency="USD"
-            rating={4.5}
-            reviewCount={10}
+            currency={product.currency || "USD"}
+            rating={product.rating || 4.5}
+            reviewCount={product.review_count || 10}
             image={product.image_urls?.[0] || ""}
             supplier={product.supplier_name || ""}
+            discount={product.discount || 0}
+            isNew={product.is_new || false}
+            inStock={(product.stock ?? 0) > 0}
+            product={product}
             onAddToCart={(id) => console.log(`Added product ${id} to cart`)}
             onViewDetails={(id) => (window.location.href = `/product/${id}`)}
           />
@@ -540,11 +544,15 @@ const PopularProducts = () => {
             id={product.id}
             name={product.name}
             price={product.price}
-            currency="USD"
-            rating={4.5}
-            reviewCount={10}
+            currency={product.currency || "USD"}
+            rating={product.rating || 4.5}
+            reviewCount={product.review_count || 10}
             image={product.image_urls?.[0] || ""}
             supplier={product.supplier_name || ""}
+            discount={product.discount || 0}
+            isNew={product.is_new || false}
+            inStock={(product.stock ?? 0) > 0}
+            product={product}
             onAddToCart={(id) => console.log(`Added product ${id} to cart`)}
             onViewDetails={(id) => (window.location.href = `/product/${id}`)}
           />

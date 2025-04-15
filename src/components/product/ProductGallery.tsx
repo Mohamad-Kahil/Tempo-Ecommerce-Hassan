@@ -17,7 +17,7 @@ interface ProductImage {
 }
 
 interface ProductGalleryProps {
-  images?: ProductImage[];
+  images?: string[] | ProductImage[];
   productName?: string;
   productId?: string;
 }
@@ -33,43 +33,64 @@ const ProductGallery = ({
   // Fetch images from Supabase if productId is provided
   const { images: dbImages, loading } = useProductImages(productId);
 
+  // Process provided images if they're simple strings
+  const processStringImages = (imgs: string[]): ProductImage[] => {
+    return imgs.map((url, index) => ({
+      id: `img-${index}`,
+      url,
+      alt: `${productName} image ${index + 1}`,
+      type: "image",
+    }));
+  };
+
   // Use provided images or transform DB images
-  const images =
-    propImages ||
-    (dbImages.length > 0
-      ? transformImagesToGalleryFormat(dbImages)
-      : [
-          {
-            id: "1",
-            url: "https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?w=800&q=80",
-            alt: "Modern kitchen interior with white cabinets",
-            type: "image",
-          },
-          {
-            id: "2",
-            url: "https://images.unsplash.com/photo-1600585152220-90363fe7e115?w=800&q=80",
-            alt: "Stylish bathroom with marble countertop",
-            type: "image",
-          },
-          {
-            id: "3",
-            url: "https://images.unsplash.com/photo-1600566752355-35792bedcfea?w=800&q=80",
-            alt: "Contemporary living room furniture",
-            type: "image",
-          },
-          {
-            id: "4",
-            url: "https://images.unsplash.com/photo-1600210492493-0946911123ea?w=800&q=80",
-            alt: "Elegant dining room set",
-            type: "image",
-          },
-          {
-            id: "5",
-            url: "https://images.unsplash.com/photo-1600566753086-00f18fb6b3ea?w=800&q=80",
-            alt: "Product demonstration video",
-            type: "video",
-          },
-        ]);
+  const images = (() => {
+    if (propImages && propImages.length > 0) {
+      // Check if propImages are strings or already ProductImage objects
+      if (typeof propImages[0] === "string") {
+        return processStringImages(propImages as string[]);
+      }
+      return propImages as ProductImage[];
+    }
+
+    if (dbImages.length > 0) {
+      return transformImagesToGalleryFormat(dbImages);
+    }
+
+    // Fallback images
+    return [
+      {
+        id: "1",
+        url: "https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?w=800&q=80",
+        alt: "Modern kitchen interior with white cabinets",
+        type: "image",
+      },
+      {
+        id: "2",
+        url: "https://images.unsplash.com/photo-1600585152220-90363fe7e115?w=800&q=80",
+        alt: "Stylish bathroom with marble countertop",
+        type: "image",
+      },
+      {
+        id: "3",
+        url: "https://images.unsplash.com/photo-1600566752355-35792bedcfea?w=800&q=80",
+        alt: "Contemporary living room furniture",
+        type: "image",
+      },
+      {
+        id: "4",
+        url: "https://images.unsplash.com/photo-1600210492493-0946911123ea?w=800&q=80",
+        alt: "Elegant dining room set",
+        type: "image",
+      },
+      {
+        id: "5",
+        url: "https://images.unsplash.com/photo-1600566753086-00f18fb6b3ea?w=800&q=80",
+        alt: "Product demonstration video",
+        type: "video",
+      },
+    ];
+  })();
 
   const handlePrevious = () => {
     setCurrentImageIndex((prev) => (prev === 0 ? images.length - 1 : prev - 1));

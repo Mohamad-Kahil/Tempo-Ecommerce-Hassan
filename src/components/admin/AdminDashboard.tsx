@@ -25,6 +25,7 @@ import {
 import ContentManagement from "./ContentManagement";
 import SupplierManagement from "./SupplierManagement";
 import Categories from "./Categories";
+import ProductsManagementStoryboard from "./ProductsManagementStoryboard";
 
 const AdminDashboard = () => {
   const { user, isAuthenticated, isAdmin, isLoading } = useAuth();
@@ -51,8 +52,10 @@ const AdminDashboard = () => {
               <div className="text-sm text-gray-500">
                 Logged in as: <span className="font-medium">{user?.email}</span>
               </div>
-              <Button variant="outline" size="sm">
-                View Site
+              <Button variant="outline" size="sm" asChild>
+                <a href="/" target="_blank" rel="noopener noreferrer">
+                  View Site
+                </a>
               </Button>
             </div>
           </div>
@@ -172,7 +175,7 @@ const AdminDashboard = () => {
                 </Card>
               )}
 
-              {activeTab === "products" && <ProductsManagement />}
+              {activeTab === "products" && <ProductsManagementStoryboard />}
 
               {activeTab === "categories" && <Categories />}
 
