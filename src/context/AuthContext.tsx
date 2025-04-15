@@ -8,19 +8,22 @@ interface AuthContextType {
   isLoading: boolean;
   isAuthenticated: boolean;
   isAdmin: boolean;
+  userRole: string;
   logout: () => Promise<void>;
   refreshUser: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-export const useAuth = () => {
+function useAuth() {
   const context = useContext(AuthContext);
   if (context === undefined) {
     throw new Error("useAuth must be used within an AuthProvider");
   }
   return context;
-};
+}
+
+export { useAuth };
 
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
@@ -77,12 +80,14 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   // Check if user has admin role
   const isAdmin = !!user && user.app_metadata?.role === "admin";
+  const userRole = user?.app_metadata?.role || "viewer";
 
   const value = {
     user,
     isLoading,
     isAuthenticated: !!user,
     isAdmin,
+    userRole,
     logout: handleLogout,
     refreshUser,
   };

@@ -21,14 +21,19 @@ import {
   BarChart,
   Image,
   FileText,
+  Layers,
+  Globe,
+  BookOpen,
+  PanelLeft,
 } from "lucide-react";
 import ContentManagement from "./ContentManagement";
 import SupplierManagement from "./SupplierManagement";
 import Categories from "./Categories";
 import ProductsManagementStoryboard from "./ProductsManagementStoryboard";
+import HomepageLayoutManager from "./HomepageLayoutManager";
 
 const AdminDashboard = () => {
-  const { user, isAuthenticated, isAdmin, isLoading } = useAuth();
+  const { user, isAuthenticated, isAdmin, isLoading, userRole } = useAuth();
   const [activeTab, setActiveTab] = useState("overview");
 
   if (isLoading) {
@@ -120,6 +125,32 @@ const AdminDashboard = () => {
                     >
                       <BarChart className="mr-2 h-4 w-4" />
                       Analytics
+                    </Button>
+                    <Button
+                      variant={
+                        activeTab === "homepage_layout" ? "default" : "ghost"
+                      }
+                      className="w-full justify-start"
+                      onClick={() => setActiveTab("homepage_layout")}
+                    >
+                      <Layers className="mr-2 h-4 w-4" />
+                      Homepage Layout
+                    </Button>
+                    <Button
+                      variant={activeTab === "pages" ? "default" : "ghost"}
+                      className="w-full justify-start"
+                      onClick={() => setActiveTab("pages")}
+                    >
+                      <BookOpen className="mr-2 h-4 w-4" />
+                      Pages
+                    </Button>
+                    <Button
+                      variant={activeTab === "seo" ? "default" : "ghost"}
+                      className="w-full justify-start"
+                      onClick={() => setActiveTab("seo")}
+                    >
+                      <Globe className="mr-2 h-4 w-4" />
+                      SEO Settings
                     </Button>
                     <Button
                       variant={activeTab === "settings" ? "default" : "ghost"}
@@ -223,6 +254,55 @@ const AdminDashboard = () => {
                     <p className="text-sm text-muted-foreground mb-4">
                       This section will be implemented in the next phase.
                     </p>
+                  </CardContent>
+                </Card>
+              )}
+
+              {activeTab === "homepage_layout" && <HomepageLayoutManager />}
+
+              {activeTab === "pages" && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Custom Page Builder</CardTitle>
+                    <CardDescription>
+                      Create and manage custom pages with rich content editor.
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-sm text-muted-foreground mb-4">
+                      This feature allows you to create custom pages with
+                      multilingual content, SEO settings, and publish controls.
+                    </p>
+                    <div className="bg-muted p-4 rounded-md">
+                      <p className="text-sm font-medium">Coming soon</p>
+                      <p className="text-xs text-muted-foreground">
+                        This feature is currently being implemented.
+                      </p>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
+              {activeTab === "seo" && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle>SEO Settings</CardTitle>
+                    <CardDescription>
+                      Manage SEO settings for products, categories, and pages.
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-sm text-muted-foreground mb-4">
+                      This feature allows you to set meta titles, descriptions,
+                      slugs, and OG images for better search engine
+                      optimization.
+                    </p>
+                    <div className="bg-muted p-4 rounded-md">
+                      <p className="text-sm font-medium">Coming soon</p>
+                      <p className="text-xs text-muted-foreground">
+                        This feature is currently being implemented.
+                      </p>
+                    </div>
                   </CardContent>
                 </Card>
               )}
