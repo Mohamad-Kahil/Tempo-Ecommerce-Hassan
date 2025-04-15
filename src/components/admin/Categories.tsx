@@ -35,7 +35,10 @@ import {
   AlertCircle,
   Image,
   Loader2,
+  LayoutGrid,
+  List,
 } from "lucide-react";
+import { Toggle } from "@/components/ui/toggle";
 import { Tables } from "@/types/supabase";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -93,6 +96,9 @@ const Categories = () => {
     level: "",
   });
   const [isFilterOpen, setIsFilterOpen] = useState(false);
+
+  // View mode state (card or list)
+  const [viewMode, setViewMode] = useState<"card" | "list">("card");
 
   useEffect(() => {
     fetchCategories();
@@ -521,13 +527,20 @@ const Categories = () => {
 
   // Apply filters and pagination to categories
   const filteredCategories = useMemo(() => {
-    return allCategories.filter((category) => {
+    // First, organize categories by level for indentation in list view
+    const categoriesByLevel = allCategories.filter((category) => {
       const nameMatch =
         !filters.name ||
         category.name.toLowerCase().includes(filters.name.toLowerCase());
       const levelMatch =
         !filters.level || category.level.toString() === filters.level;
       return nameMatch && levelMatch;
+    });
+
+    // Sort by level first, then by name
+    return categoriesByLevel.sort((a, b) => {
+      if (a.level !== b.level) return a.level - b.level;
+      return a.name.localeCompare(b.name);
     });
   }, [allCategories, filters]);
 
@@ -587,6 +600,24 @@ const Categories = () => {
             >
               <Filter className="mr-2 h-4 w-4" /> Filter
             </Button>
+            <div className="flex border rounded-md">
+              <Toggle
+                pressed={viewMode === "card"}
+                onPressedChange={() => setViewMode("card")}
+                aria-label="Card view"
+                className="px-3"
+              >
+                <LayoutGrid className="h-4 w-4" />
+              </Toggle>
+              <Toggle
+                pressed={viewMode === "list"}
+                onPressedChange={() => setViewMode("list")}
+                aria-label="List view"
+                className="px-3"
+              >
+                <List className="h-4 w-4" />
+              </Toggle>
+            </div>
             {selectedCategories.length > 0 && (
               <Button
                 variant="destructive"
@@ -888,295 +919,426 @@ const Categories = () => {
                   {selectedCategories.length} of {categories.length} selected
                 </div>
               </div>
-              {categories.map((category) => (
-                <Card
-                  key={category.id}
-                  className={`overflow-hidden ${selectedCategories.includes(category.id) ? "border-primary" : ""}`}
-                >
-                  {editingCategory?.id === category.id ? (
-                    <CardContent className="p-4">
-                      <div className="grid gap-4">
-                        <div className="grid grid-cols-2 gap-4">
-                          <div className="space-y-2">
-                            <Label htmlFor={`edit-name-${category.id}`}>
-                              Name
-                            </Label>
-                            <Input
-                              id={`edit-name-${category.id}`}
-                              value={editingCategory.name}
-                              onChange={(e) =>
-                                setEditingCategory({
-                                  ...editingCategory,
-                                  name: e.target.value,
-                                })
-                              }
-                            />
-                            {errors.name && (
-                              <p className="text-sm text-red-500">
-                                {errors.name}
-                              </p>
-                            )}
-                          </div>
-                          <div className="space-y-2">
-                            <Label htmlFor={`edit-slug-${category.id}`}>
-                              Slug
-                            </Label>
-                            <Input
-                              id={`edit-slug-${category.id}`}
-                              value={editingCategory.slug}
-                              onChange={(e) =>
-                                setEditingCategory({
-                                  ...editingCategory,
-                                  slug: e.target.value,
-                                })
-                              }
-                            />
-                            {errors.slug && (
-                              <p className="text-sm text-red-500">
-                                {errors.slug}
-                              </p>
-                            )}
-                          </div>
-                        </div>
-                        <div className="space-y-2">
-                          <Label htmlFor={`edit-description-${category.id}`}>
-                            Description
-                          </Label>
-                          <Textarea
-                            id={`edit-description-${category.id}`}
-                            value={editingCategory.description || ""}
-                            onChange={(e) =>
-                              setEditingCategory({
-                                ...editingCategory,
-                                description: e.target.value,
-                              })
-                            }
-                          />
-                        </div>
-                        <div className="grid grid-cols-2 gap-4">
-                          <div className="space-y-2">
-                            <Label htmlFor={`edit-level-${category.id}`}>
-                              Level
-                            </Label>
-                            <Select
-                              value={editingCategory.level.toString()}
-                              onValueChange={(value) =>
-                                setEditingCategory({
-                                  ...editingCategory,
-                                  level: parseInt(value),
-                                  parent_id:
-                                    parseInt(value) === 1
-                                      ? null
-                                      : editingCategory.parent_id,
-                                })
-                              }
-                            >
-                              <SelectTrigger id={`edit-level-${category.id}`}>
-                                <SelectValue placeholder="Select level" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="1">Level 1 (Top)</SelectItem>
-                                <SelectItem value="2">Level 2</SelectItem>
-                                <SelectItem value="3">Level 3</SelectItem>
-                                <SelectItem value="4">Level 4</SelectItem>
-                              </SelectContent>
-                            </Select>
-                            {errors.level && (
-                              <p className="text-sm text-red-500">
-                                {errors.level}
-                              </p>
-                            )}
-                          </div>
-                          {editingCategory.level > 1 && (
-                            <div className="space-y-2">
-                              <Label htmlFor={`edit-parent-${category.id}`}>
-                                Parent Category
-                              </Label>
-                              <Select
-                                value={editingCategory.parent_id || ""}
-                                onValueChange={(value) =>
-                                  setEditingCategory({
-                                    ...editingCategory,
-                                    parent_id: value,
-                                  })
-                                }
-                              >
-                                <SelectTrigger
-                                  id={`edit-parent-${category.id}`}
-                                >
-                                  <SelectValue placeholder="Select parent" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  {parentCategories.map((cat) => (
-                                    <SelectItem key={cat.id} value={cat.id}>
-                                      {cat.name}
-                                    </SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
-                              {errors.parent_id && (
-                                <p className="text-sm text-red-500">
-                                  {errors.parent_id}
-                                </p>
-                              )}
-                            </div>
-                          )}
-                        </div>
-                        <div className="space-y-2">
-                          <Label htmlFor={`edit-image-${category.id}`}>
-                            Image
-                          </Label>
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div>
-                              <div className="flex items-center gap-2">
+
+              {viewMode === "card" ? (
+                // Card View
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {categories.map((category) => (
+                    <Card
+                      key={category.id}
+                      className={`overflow-hidden h-full ${selectedCategories.includes(category.id) ? "border-primary" : ""} hover:shadow-md transition-shadow`}
+                    >
+                      {editingCategory?.id === category.id ? (
+                        <CardContent className="p-4">
+                          <div className="grid gap-4">
+                            <div className="grid grid-cols-2 gap-4">
+                              <div className="space-y-2">
+                                <Label htmlFor={`edit-name-${category.id}`}>
+                                  Name
+                                </Label>
                                 <Input
-                                  id={`edit-image-${category.id}`}
-                                  value={editingCategory.image_url || ""}
+                                  id={`edit-name-${category.id}`}
+                                  value={editingCategory.name}
                                   onChange={(e) =>
                                     setEditingCategory({
                                       ...editingCategory,
-                                      image_url: e.target.value,
+                                      name: e.target.value,
                                     })
                                   }
-                                  placeholder="https://example.com/image.jpg"
-                                  className="flex-1"
                                 />
-                                <div className="relative">
-                                  <Input
-                                    type="file"
-                                    ref={editFileInputRef}
-                                    className="absolute inset-0 opacity-0 cursor-pointer z-10"
-                                    accept="image/jpeg,image/png,image/gif,image/webp"
-                                    onChange={(e) => handleImageSelect(e, true)}
-                                    disabled={isUploading}
-                                    onClick={(e) =>
-                                      console.log("Edit file input clicked")
-                                    }
-                                  />
-                                  <Button
-                                    type="button"
-                                    variant="outline"
-                                    disabled={isUploading}
-                                    className="relative"
-                                    onClick={() =>
-                                      editFileInputRef.current?.click()
+                                {errors.name && (
+                                  <p className="text-sm text-red-500">
+                                    {errors.name}
+                                  </p>
+                                )}
+                              </div>
+                              <div className="space-y-2">
+                                <Label htmlFor={`edit-slug-${category.id}`}>
+                                  Slug
+                                </Label>
+                                <Input
+                                  id={`edit-slug-${category.id}`}
+                                  value={editingCategory.slug}
+                                  onChange={(e) =>
+                                    setEditingCategory({
+                                      ...editingCategory,
+                                      slug: e.target.value,
+                                    })
+                                  }
+                                />
+                                {errors.slug && (
+                                  <p className="text-sm text-red-500">
+                                    {errors.slug}
+                                  </p>
+                                )}
+                              </div>
+                            </div>
+                            <div className="space-y-2">
+                              <Label
+                                htmlFor={`edit-description-${category.id}`}
+                              >
+                                Description
+                              </Label>
+                              <Textarea
+                                id={`edit-description-${category.id}`}
+                                value={editingCategory.description || ""}
+                                onChange={(e) =>
+                                  setEditingCategory({
+                                    ...editingCategory,
+                                    description: e.target.value,
+                                  })
+                                }
+                              />
+                            </div>
+                            <div className="grid grid-cols-2 gap-4">
+                              <div className="space-y-2">
+                                <Label htmlFor={`edit-level-${category.id}`}>
+                                  Level
+                                </Label>
+                                <Select
+                                  value={editingCategory.level.toString()}
+                                  onValueChange={(value) =>
+                                    setEditingCategory({
+                                      ...editingCategory,
+                                      level: parseInt(value),
+                                      parent_id:
+                                        parseInt(value) === 1
+                                          ? null
+                                          : editingCategory.parent_id,
+                                    })
+                                  }
+                                >
+                                  <SelectTrigger
+                                    id={`edit-level-${category.id}`}
+                                  >
+                                    <SelectValue placeholder="Select level" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="1">
+                                      Level 1 (Top)
+                                    </SelectItem>
+                                    <SelectItem value="2">Level 2</SelectItem>
+                                    <SelectItem value="3">Level 3</SelectItem>
+                                    <SelectItem value="4">Level 4</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                                {errors.level && (
+                                  <p className="text-sm text-red-500">
+                                    {errors.level}
+                                  </p>
+                                )}
+                              </div>
+                              {editingCategory.level > 1 && (
+                                <div className="space-y-2">
+                                  <Label htmlFor={`edit-parent-${category.id}`}>
+                                    Parent Category
+                                  </Label>
+                                  <Select
+                                    value={editingCategory.parent_id || ""}
+                                    onValueChange={(value) =>
+                                      setEditingCategory({
+                                        ...editingCategory,
+                                        parent_id: value,
+                                      })
                                     }
                                   >
-                                    {isUploading ? (
-                                      <Loader2 className="h-4 w-4 animate-spin" />
-                                    ) : (
-                                      <Upload className="h-4 w-4" />
-                                    )}
-                                  </Button>
+                                    <SelectTrigger
+                                      id={`edit-parent-${category.id}`}
+                                    >
+                                      <SelectValue placeholder="Select parent" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      {parentCategories.map((cat) => (
+                                        <SelectItem key={cat.id} value={cat.id}>
+                                          {cat.name}
+                                        </SelectItem>
+                                      ))}
+                                    </SelectContent>
+                                  </Select>
+                                  {errors.parent_id && (
+                                    <p className="text-sm text-red-500">
+                                      {errors.parent_id}
+                                    </p>
+                                  )}
                                 </div>
-                              </div>
-                              {isUploading && (
-                                <div className="mt-2">
-                                  <Progress
-                                    value={uploadProgress}
-                                    className="h-2"
-                                  />
-                                  <p className="text-xs text-center mt-1">
-                                    {uploadProgress}%
-                                  </p>
-                                </div>
-                              )}
-                              {errors.image_url && (
-                                <p className="text-sm text-red-500 mt-1">
-                                  {errors.image_url}
-                                </p>
                               )}
                             </div>
-                            {editingCategory.image_url && (
-                              <div className="flex items-center justify-center border rounded-md p-2">
-                                <img
-                                  src={editingCategory.image_url}
-                                  alt="Category preview"
-                                  className="max-h-24 object-contain"
-                                />
+                            <div className="space-y-2">
+                              <Label htmlFor={`edit-image-${category.id}`}>
+                                Image
+                              </Label>
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                  <div className="flex items-center gap-2">
+                                    <Input
+                                      id={`edit-image-${category.id}`}
+                                      value={editingCategory.image_url || ""}
+                                      onChange={(e) =>
+                                        setEditingCategory({
+                                          ...editingCategory,
+                                          image_url: e.target.value,
+                                        })
+                                      }
+                                      placeholder="https://example.com/image.jpg"
+                                      className="flex-1"
+                                    />
+                                    <div className="relative">
+                                      <Input
+                                        type="file"
+                                        ref={editFileInputRef}
+                                        className="absolute inset-0 opacity-0 cursor-pointer z-10"
+                                        accept="image/jpeg,image/png,image/gif,image/webp"
+                                        onChange={(e) =>
+                                          handleImageSelect(e, true)
+                                        }
+                                        disabled={isUploading}
+                                        onClick={(e) =>
+                                          console.log("Edit file input clicked")
+                                        }
+                                      />
+                                      <Button
+                                        type="button"
+                                        variant="outline"
+                                        disabled={isUploading}
+                                        className="relative"
+                                        onClick={() =>
+                                          editFileInputRef.current?.click()
+                                        }
+                                      >
+                                        {isUploading ? (
+                                          <Loader2 className="h-4 w-4 animate-spin" />
+                                        ) : (
+                                          <Upload className="h-4 w-4" />
+                                        )}
+                                      </Button>
+                                    </div>
+                                  </div>
+                                  {isUploading && (
+                                    <div className="mt-2">
+                                      <Progress
+                                        value={uploadProgress}
+                                        className="h-2"
+                                      />
+                                      <p className="text-xs text-center mt-1">
+                                        {uploadProgress}%
+                                      </p>
+                                    </div>
+                                  )}
+                                  {errors.image_url && (
+                                    <p className="text-sm text-red-500 mt-1">
+                                      {errors.image_url}
+                                    </p>
+                                  )}
+                                </div>
+                                {editingCategory.image_url && (
+                                  <div className="flex items-center justify-center border rounded-md p-2">
+                                    <img
+                                      src={editingCategory.image_url}
+                                      alt="Category preview"
+                                      className="max-h-24 object-contain"
+                                    />
+                                  </div>
+                                )}
                               </div>
-                            )}
+                            </div>
+                            <div className="flex justify-end space-x-2">
+                              <Button
+                                variant="outline"
+                                onClick={handleCancelEdit}
+                              >
+                                <X className="mr-2 h-4 w-4" /> Cancel
+                              </Button>
+                              <Button
+                                onClick={handleUpdateCategory}
+                                disabled={isSaving}
+                              >
+                                {isSaving ? (
+                                  "Saving..."
+                                ) : (
+                                  <>
+                                    <Save className="mr-2 h-4 w-4" /> Save
+                                    Changes
+                                  </>
+                                )}
+                              </Button>
+                            </div>
                           </div>
-                        </div>
-                        <div className="flex justify-end space-x-2">
-                          <Button variant="outline" onClick={handleCancelEdit}>
-                            <X className="mr-2 h-4 w-4" /> Cancel
-                          </Button>
-                          <Button
-                            onClick={handleUpdateCategory}
-                            disabled={isSaving}
-                          >
-                            {isSaving ? (
-                              "Saving..."
-                            ) : (
-                              <>
-                                <Save className="mr-2 h-4 w-4" /> Save Changes
-                              </>
-                            )}
-                          </Button>
-                        </div>
-                      </div>
-                    </CardContent>
-                  ) : (
-                    <CardContent className="p-4">
-                      <div className="flex items-start justify-between">
-                        <div className="flex items-start">
-                          <Checkbox
-                            id={`select-${category.id}`}
-                            className="mt-1 mr-3"
-                            checked={selectedCategories.includes(category.id)}
-                            onCheckedChange={() =>
-                              toggleCategorySelection(category.id)
-                            }
-                          />
-                          <div>
-                            <h3 className="text-lg font-semibold">
-                              {category.name}
-                            </h3>
-                            <p className="text-sm text-muted-foreground">
-                              Level: {category.level}{" "}
-                              {category.parent_id && "• Has parent"}
-                            </p>
-                            {category.description && (
-                              <p className="mt-2 text-sm">
-                                {category.description}
-                              </p>
-                            )}
+                        </CardContent>
+                      ) : (
+                        <div className="flex flex-col h-full">
+                          <CardHeader className="pb-2 pt-4 px-4">
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-2">
+                                <Checkbox
+                                  id={`select-${category.id}`}
+                                  checked={selectedCategories.includes(
+                                    category.id,
+                                  )}
+                                  onCheckedChange={() =>
+                                    toggleCategorySelection(category.id)
+                                  }
+                                />
+                                <CardTitle className="text-base font-medium">
+                                  {category.name}
+                                </CardTitle>
+                              </div>
+                              <div className="flex items-center text-xs font-medium px-2 py-1 rounded-full bg-primary/10 text-primary">
+                                Level {category.level}
+                              </div>
+                            </div>
+                          </CardHeader>
+                          <CardContent className="p-4 pt-0 flex-grow">
                             {category.image_url && (
-                              <div className="mt-2">
+                              <div className="mb-3 h-24 w-full overflow-hidden rounded-md bg-muted/30">
                                 <img
                                   src={category.image_url}
                                   alt={category.name}
-                                  className="h-12 w-12 object-cover rounded-md"
+                                  className="h-full w-full object-cover transition-transform hover:scale-105"
                                 />
                               </div>
                             )}
-                          </div>
+                            {category.parent_id && (
+                              <div className="mb-2 text-xs inline-flex items-center px-2 py-1 rounded-full bg-muted">
+                                <span>Has parent</span>
+                              </div>
+                            )}
+                            {category.description && (
+                              <p className="text-sm text-muted-foreground line-clamp-2">
+                                {category.description}
+                              </p>
+                            )}
+                          </CardContent>
+                          <CardFooter className="p-4 pt-0 flex justify-between border-t mt-auto">
+                            <div className="text-xs text-muted-foreground">
+                              Products: <span className="font-medium">0</span>
+                            </div>
+                            <div className="flex space-x-2">
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => handleEditClick(category)}
+                                className="h-8 w-8 p-0"
+                              >
+                                <Edit className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => {
+                                  setSelectedCategories([category.id]);
+                                  setIsDeleteDialogOpen(true);
+                                }}
+                                className="h-8 w-8 p-0 text-red-500 hover:text-red-600 hover:bg-red-50"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          </CardFooter>
                         </div>
-                        <div className="flex space-x-2">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => handleEditClick(category)}
-                          >
-                            <Edit className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() =>
-                              setIsDeleteDialogOpen(true) ||
-                              setSelectedCategories([category.id])
+                      )}
+                    </Card>
+                  ))}
+                </div>
+              ) : (
+                // List View
+                <div className="border rounded-md overflow-hidden">
+                  <table className="w-full">
+                    <thead className="bg-muted">
+                      <tr>
+                        <th className="w-8 p-2 text-left">
+                          <Checkbox
+                            id="select-all-list"
+                            checked={
+                              categories.length > 0 &&
+                              selectedCategories.length === categories.length
                             }
-                          >
-                            <Trash2 className="h-4 w-4 text-red-500" />
-                          </Button>
-                        </div>
-                      </div>
-                    </CardContent>
-                  )}
-                </Card>
-              ))}
+                            onCheckedChange={toggleAllCategories}
+                          />
+                        </th>
+                        <th className="p-2 text-left font-medium">Name</th>
+                        <th className="p-2 text-left font-medium">Level</th>
+                        <th className="p-2 text-left font-medium">Parent</th>
+                        <th className="p-2 text-left font-medium">
+                          Description
+                        </th>
+                        <th className="p-2 text-left font-medium">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y">
+                      {categories.map((category) => (
+                        <tr
+                          key={category.id}
+                          className={`${selectedCategories.includes(category.id) ? "bg-primary/5" : ""}`}
+                        >
+                          <td className="p-2">
+                            <Checkbox
+                              id={`select-list-${category.id}`}
+                              checked={selectedCategories.includes(category.id)}
+                              onCheckedChange={() =>
+                                toggleCategorySelection(category.id)
+                              }
+                            />
+                          </td>
+                          <td className="p-2">
+                            <div className="flex items-center">
+                              <div
+                                className="font-medium"
+                                style={{
+                                  marginLeft: `${(category.level - 1) * 20}px`,
+                                  display: "flex",
+                                  alignItems: "center",
+                                  gap: "8px",
+                                }}
+                              >
+                                {category.image_url ? (
+                                  <img
+                                    src={category.image_url}
+                                    alt={category.name}
+                                    className="h-8 w-8 object-cover rounded-md"
+                                  />
+                                ) : (
+                                  <div className="h-8 w-8 bg-muted rounded-md flex items-center justify-center">
+                                    <Image className="h-4 w-4 text-muted-foreground" />
+                                  </div>
+                                )}
+                                {category.name}
+                              </div>
+                            </div>
+                          </td>
+                          <td className="p-2">{category.level}</td>
+                          <td className="p-2">
+                            {category.parent_id ? "Yes" : "No"}
+                          </td>
+                          <td className="p-2 max-w-xs truncate">
+                            {category.description || "-"}
+                          </td>
+                          <td className="p-2">
+                            <div className="flex space-x-2">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handleEditClick(category)}
+                              >
+                                <Edit className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => {
+                                  setSelectedCategories([category.id]);
+                                  setIsDeleteDialogOpen(true);
+                                }}
+                              >
+                                <Trash2 className="h-4 w-4 text-red-500" />
+                              </Button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
             </div>
           )}
 

@@ -158,6 +158,13 @@ const MainLayout = ({ children, direction = "ltr" }: MainLayoutProps) => {
 
             {/* Desktop Navigation */}
             <nav className="hidden md:flex items-center space-x-6">
+              <Button
+                variant="ghost"
+                onClick={() => navigate("/products")}
+                className="flex items-center gap-1"
+              >
+                Products
+              </Button>
               {categories.map((category) => (
                 <DropdownMenu key={category.name}>
                   <DropdownMenuTrigger asChild>
