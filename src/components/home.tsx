@@ -13,6 +13,7 @@ import {
   LogOut,
 } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
+import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/context/AuthContext";
 import { useProducts } from "@/hooks/useProducts";
 import { useCategories } from "@/hooks/useCategories";
@@ -64,14 +65,40 @@ const CategoryCard = ({
 
 const AdvertBanner = ({
   image = "https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=1200&q=80",
+  title,
+  description,
+  link,
 }) => {
+  const navigate = useNavigate();
+
+  const handleClick = () => {
+    if (link) {
+      if (link.startsWith("http")) {
+        window.open(link, "_blank");
+      } else {
+        navigate(link);
+      }
+    }
+  };
+
   return (
-    <div className="relative overflow-hidden rounded-lg h-[200px] w-full">
+    <div
+      className="relative overflow-hidden rounded-lg h-[200px] w-full cursor-pointer"
+      onClick={handleClick}
+    >
       <img
         src={image}
-        alt="Advertisement"
+        alt={title || "Advertisement"}
         className="w-full h-full object-cover"
       />
+      <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent flex flex-col justify-end p-6">
+        {title && (
+          <h3 className="text-white text-xl font-bold mb-2">{title}</h3>
+        )}
+        {description && (
+          <p className="text-white text-sm mb-4">{description}</p>
+        )}
+      </div>
       <div className="absolute top-4 left-4 bg-white/90 px-2 py-1 text-xs rounded">
         Advertisement
       </div>
@@ -724,6 +751,85 @@ const PopularProducts = () => {
 };
 
 const HomePage = () => {
+  const [heroSections, setHeroSections] = React.useState([]);
+  const [banners, setBanners] = React.useState([]);
+  const [loading, setLoading] = React.useState(true);
+  const [error, setError] = React.useState("");
+
+  // Fetch hero sections and banners from the database
+  React.useEffect(() => {
+    const fetchHeroSections = async () => {
+      try {
+        const { data, error } = await supabase
+          .from("advertisements")
+          .select("*")
+          .eq("placement", "hero")
+          .eq("is_active", true);
+
+        if (error) throw error;
+        setHeroSections(data || []);
+      } catch (err) {
+        console.error("Error fetching hero sections:", err);
+        // Fallback to default data if fetch fails
+        setHeroSections([
+          {
+            id: "1",
+            title: "Transform Your Space",
+            description:
+              "Discover premium building materials for your dream home",
+            image_url:
+              "https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=1200&q=80",
+          },
+          {
+            id: "2",
+            title: "Kitchen Essentials",
+            description:
+              "Modern fixtures and materials for your kitchen renovation",
+            image_url:
+              "https://images.unsplash.com/photo-1600607687920-4e2a09cf159d?w=1200&q=80",
+          },
+          {
+            id: "3",
+            title: "Bathroom Luxury",
+            description: "Elegant fixtures and tiles for your bathroom",
+            image_url:
+              "https://images.unsplash.com/photo-1600566753190-17f0baa2a6c3?w=1200&q=80",
+          },
+        ]);
+      }
+    };
+
+    const fetchBanners = async () => {
+      try {
+        const { data, error } = await supabase
+          .from("advertisements")
+          .select("*")
+          .eq("placement", "banner")
+          .eq("is_active", true);
+
+        if (error) throw error;
+        setBanners(data || []);
+      } catch (err) {
+        console.error("Error fetching banners:", err);
+        // Fallback to default data if fetch fails
+        setBanners([
+          {
+            id: "1",
+            title: "Summer Sale",
+            description: "Get 20% off on all flooring materials",
+            image_url:
+              "https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=1200&q=80",
+          },
+        ]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchHeroSections();
+    fetchBanners();
+  }, []);
+
   return (
     <div className="min-h-screen bg-gray-50">
       <Header />
@@ -733,32 +839,11 @@ const HomePage = () => {
         <section className="relative">
           <Carousel className="w-full">
             <CarouselContent>
-              {[
-                {
-                  image:
-                    "https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=1200&q=80",
-                  title: "Transform Your Space",
-                  description:
-                    "Discover premium building materials for your dream home",
-                },
-                {
-                  image:
-                    "https://images.unsplash.com/photo-1600607687920-4e2a09cf159d?w=1200&q=80",
-                  title: "Kitchen Essentials",
-                  description:
-                    "Modern fixtures and materials for your kitchen renovation",
-                },
-                {
-                  image:
-                    "https://images.unsplash.com/photo-1600566753190-17f0baa2a6c3?w=1200&q=80",
-                  title: "Bathroom Luxury",
-                  description: "Elegant fixtures and tiles for your bathroom",
-                },
-              ].map((slide, index) => (
-                <CarouselItem key={index}>
+              {heroSections.map((slide, index) => (
+                <CarouselItem key={slide.id || index}>
                   <div className="relative h-[400px] md:h-[500px] w-full">
                     <img
-                      src={slide.image}
+                      src={slide.image_url || slide.image}
                       alt={slide.title}
                       className="w-full h-full object-cover"
                     />
@@ -821,7 +906,18 @@ const HomePage = () => {
         {/* Advertisement Banner */}
         <section className="py-8">
           <div className="container mx-auto px-4">
-            <AdvertBanner image="https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=1200&q=80" />
+            {banners.length > 0 && (
+              <AdvertBanner
+                image={
+                  banners[0].image_url ||
+                  banners[0].image ||
+                  "https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=1200&q=80"
+                }
+                title={banners[0].title}
+                description={banners[0].description}
+                link={banners[0].link_url || banners[0].link}
+              />
+            )}
           </div>
         </section>
 

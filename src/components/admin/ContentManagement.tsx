@@ -19,7 +19,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Image, Upload, X } from "lucide-react";
-import SupplierManagement from "./SupplierManagement";
 import { supabase } from "@/lib/supabase";
 
 const ContentManagement = () => {
@@ -323,7 +322,6 @@ const ContentManagement = () => {
             <TabsList className="mb-6">
               <TabsTrigger value="hero">Hero Sections</TabsTrigger>
               <TabsTrigger value="banners">Banners</TabsTrigger>
-              <TabsTrigger value="suppliers">Suppliers</TabsTrigger>
               <TabsTrigger value="promotions">Promotions</TabsTrigger>
             </TabsList>
 
@@ -958,10 +956,6 @@ const ContentManagement = () => {
                   </Card>
                 </div>
               </div>
-            </TabsContent>
-
-            <TabsContent value="suppliers" className="space-y-6">
-              <SupplierManagement />
             </TabsContent>
 
             <TabsContent value="promotions">
