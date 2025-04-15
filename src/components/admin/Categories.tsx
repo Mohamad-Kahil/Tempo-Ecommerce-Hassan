@@ -37,6 +37,10 @@ import {
   Loader2,
   LayoutGrid,
   List,
+  ChevronDown,
+  ChevronUp,
+  Folder,
+  FolderOpen,
 } from "lucide-react";
 import { Toggle } from "@/components/ui/toggle";
 import { Tables } from "@/types/supabase";
@@ -53,14 +57,24 @@ import {
 } from "@/components/ui/alert-dialog";
 import { toast } from "@/components/ui/use-toast";
 import { Progress } from "@/components/ui/progress";
+import { motion, AnimatePresence } from "framer-motion";
 
 type Category = Tables<"categories">;
+
+interface CategoryWithChildren extends Category {
+  children?: CategoryWithChildren[];
+  productCount: number;
+  isExpanded?: boolean;
+}
 
 const ITEMS_PER_PAGE = 5;
 
 const Categories = () => {
-  const [categories, setCategories] = useState<Category[]>([]);
+  const [categories, setCategories] = useState<CategoryWithChildren[]>([]);
   const [allCategories, setAllCategories] = useState<Category[]>([]);
+  const [hierarchicalCategories, setHierarchicalCategories] = useState<
+    CategoryWithChildren[]
+  >([]);
   const [parentCategories, setParentCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
@@ -107,24 +121,138 @@ const Categories = () => {
   const fetchCategories = async () => {
     try {
       setLoading(true);
-      const { data, error } = await supabase
+      // Fetch categories
+      const { data: categoriesData, error: categoriesError } = await supabase
         .from("categories")
         .select("*")
         .order("level")
         .order("name");
 
-      if (error) throw error;
+      if (categoriesError) throw categoriesError;
 
-      if (data) {
-        setAllCategories(data);
-        // Filter level 1 categories for parent selection
-        setParentCategories(data.filter((cat) => cat.level === 1));
+      if (!categoriesData) {
+        throw new Error("No categories data returned");
       }
+
+      // Fetch products to count them per category
+      const { data: productsData, error: productsError } = await supabase
+        .from("products")
+        .select("category_id");
+
+      if (productsError) throw productsError;
+
+      // Count products per category
+      const productCountMap: Record<string, number> = {};
+      if (productsData) {
+        productsData.forEach((product) => {
+          if (product.category_id) {
+            productCountMap[product.category_id] =
+              (productCountMap[product.category_id] || 0) + 1;
+          }
+        });
+      }
+
+      // Add product counts to categories
+      const categoriesWithCounts = categoriesData.map((category) => ({
+        ...category,
+        productCount: productCountMap[category.id] || 0,
+      }));
+
+      setAllCategories(categoriesWithCounts);
+      // Filter level 1 categories for parent selection
+      setParentCategories(
+        categoriesWithCounts.filter((cat) => cat.level === 1),
+      );
+
+      // Build hierarchical structure
+      const hierarchical = buildCategoryHierarchy(categoriesWithCounts);
+      setHierarchicalCategories(hierarchical);
     } catch (error) {
       console.error("Error fetching categories:", error);
+      toast({
+        title: "Error",
+        description: "Failed to load categories. Please try again.",
+        variant: "destructive",
+      });
     } finally {
       setLoading(false);
     }
+  };
+
+  // Function to build category hierarchy
+  const buildCategoryHierarchy = (
+    categories: Category[],
+  ): CategoryWithChildren[] => {
+    // First, create a map of all categories by id
+    const categoryMap: Record<string, CategoryWithChildren> = {};
+
+    // Initialize each category with children array and expanded state
+    categories.forEach((cat) => {
+      categoryMap[cat.id] = {
+        ...cat,
+        children: [],
+        productCount: cat.productCount || 0, // Use actual product count
+        isExpanded: false,
+      };
+    });
+
+    // Build the hierarchy by adding children to their parents
+    const rootCategories: CategoryWithChildren[] = [];
+
+    categories.forEach((cat) => {
+      if (cat.parent_id && categoryMap[cat.parent_id]) {
+        // This category has a parent, add it to the parent's children
+        categoryMap[cat.parent_id].children?.push(categoryMap[cat.id]);
+      } else if (cat.level === 1) {
+        // This is a root category (level 1)
+        rootCategories.push(categoryMap[cat.id]);
+      }
+    });
+
+    return rootCategories;
+  };
+
+  // Toggle category expansion
+  const toggleCategoryExpansion = (categoryId: string) => {
+    // Update hierarchical categories for tree view
+    setHierarchicalCategories((prevCategories) => {
+      return toggleExpansionRecursive(prevCategories, categoryId);
+    });
+
+    // Also update the flat list for list view
+    setAllCategories((prevCategories) => {
+      return prevCategories.map((cat) => {
+        if (cat.id === categoryId) {
+          const isCurrentlyExpanded = (cat as CategoryWithChildren).isExpanded;
+          return {
+            ...cat,
+            isExpanded: !isCurrentlyExpanded,
+          } as CategoryWithChildren;
+        }
+        return cat;
+      });
+    });
+  };
+
+  // Helper function to recursively toggle expansion
+  const toggleExpansionRecursive = (
+    categories: CategoryWithChildren[],
+    categoryId: string,
+  ): CategoryWithChildren[] => {
+    return categories.map((category) => {
+      if (category.id === categoryId) {
+        return { ...category, isExpanded: !category.isExpanded };
+      }
+
+      if (category.children && category.children.length > 0) {
+        return {
+          ...category,
+          children: toggleExpansionRecursive(category.children, categoryId),
+        };
+      }
+
+      return category;
+    });
   };
 
   const validateForm = (category: Partial<Category>) => {
@@ -496,10 +624,10 @@ const Categories = () => {
   };
 
   const toggleAllCategories = () => {
-    if (selectedCategories.length === categories.length) {
+    if (selectedCategories.length === filteredCategories.length) {
       setSelectedCategories([]);
     } else {
-      setSelectedCategories(categories.map((cat) => cat.id));
+      setSelectedCategories(filteredCategories.map((cat) => cat.id));
     }
   };
 
@@ -527,22 +655,102 @@ const Categories = () => {
 
   // Apply filters and pagination to categories
   const filteredCategories = useMemo(() => {
-    // First, organize categories by level for indentation in list view
-    const categoriesByLevel = allCategories.filter((category) => {
+    // First, filter categories based on search criteria
+    const filteredBySearch = allCategories.filter((category) => {
       const nameMatch =
         !filters.name ||
         category.name.toLowerCase().includes(filters.name.toLowerCase());
       const levelMatch =
         !filters.level || category.level.toString() === filters.level;
+
+      // If we're filtering by name, also include parent categories of matching children
+      if (!nameMatch && filters.name && category.level === 1) {
+        // Check if any child category matches the name filter
+        const hasMatchingChild = allCategories.some(
+          (child) =>
+            child.parent_id === category.id &&
+            child.name.toLowerCase().includes(filters.name.toLowerCase()),
+        );
+        if (hasMatchingChild) return true;
+      }
+
       return nameMatch && levelMatch;
     });
 
-    // Sort by level first, then by name
-    return categoriesByLevel.sort((a, b) => {
+    // Create a map of parent IDs to their children for better organization
+    const parentChildMap: Record<string, Category[]> = {};
+
+    // Initialize the map
+    filteredBySearch.forEach((category) => {
+      if (category.parent_id) {
+        if (!parentChildMap[category.parent_id]) {
+          parentChildMap[category.parent_id] = [];
+        }
+        parentChildMap[category.parent_id].push(category);
+      }
+    });
+
+    // Sort by level first, then by parent_id (to group subcategories under their parents), then by name
+    return filteredBySearch.sort((a, b) => {
+      // First sort by level
       if (a.level !== b.level) return a.level - b.level;
+
+      // For same level, sort by parent_id to group siblings together
+      if (a.parent_id !== b.parent_id) {
+        // Handle null parent_ids (top-level categories)
+        if (a.parent_id === null) return -1;
+        if (b.parent_id === null) return 1;
+        return a.parent_id.localeCompare(b.parent_id);
+      }
+
+      // Finally sort by name
       return a.name.localeCompare(b.name);
     });
   }, [allCategories, filters]);
+
+  // Filter hierarchical categories
+  const filteredHierarchicalCategories = useMemo(() => {
+    if (!filters.name && !filters.level) {
+      return hierarchicalCategories;
+    }
+
+    // Helper function to filter hierarchical categories
+    const filterCategoriesRecursive = (
+      categories: CategoryWithChildren[],
+    ): CategoryWithChildren[] => {
+      return categories
+        .map((category) => {
+          const nameMatch =
+            !filters.name ||
+            category.name.toLowerCase().includes(filters.name.toLowerCase());
+          const levelMatch =
+            !filters.level || category.level.toString() === filters.level;
+
+          // Process children recursively
+          let filteredChildren: CategoryWithChildren[] = [];
+          if (category.children && category.children.length > 0) {
+            filteredChildren = filterCategoriesRecursive(category.children);
+          }
+
+          // Include this category if it matches or has matching children
+          if ((nameMatch && levelMatch) || filteredChildren.length > 0) {
+            return {
+              ...category,
+              children: filteredChildren,
+              // Auto-expand if we're filtering
+              isExpanded: filters.name ? true : category.isExpanded,
+            };
+          }
+
+          return null;
+        })
+        .filter(
+          (category): category is CategoryWithChildren => category !== null,
+        );
+    };
+
+    return filterCategoriesRecursive(hierarchicalCategories);
+  }, [hierarchicalCategories, filters]);
 
   // Calculate pagination
   const totalPages = Math.ceil(filteredCategories.length / ITEMS_PER_PAGE);
@@ -561,6 +769,14 @@ const Categories = () => {
   useEffect(() => {
     setCurrentPage(1);
   }, [filters]);
+
+  // Update hierarchical categories when a category is added, updated, or deleted
+  useEffect(() => {
+    if (allCategories.length > 0) {
+      const hierarchical = buildCategoryHierarchy(allCategories);
+      setHierarchicalCategories(hierarchical);
+    }
+  }, [allCategories]);
 
   const handlePageChange = (newPage: number) => {
     if (newPage > 0 && newPage <= totalPages) {
@@ -890,7 +1106,8 @@ const Categories = () => {
 
           {loading ? (
             <div className="text-center py-4">Loading categories...</div>
-          ) : filteredCategories.length === 0 ? (
+          ) : filteredCategories.length === 0 &&
+            filteredHierarchicalCategories.length === 0 ? (
             <div className="text-center py-4 text-muted-foreground">
               {allCategories.length === 0
                 ? "No categories found. Add your first category to get started."
@@ -920,13 +1137,15 @@ const Categories = () => {
                 </div>
               </div>
 
+              {/* Hierarchical View removed */}
+
               {viewMode === "card" ? (
                 // Card View
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                   {categories.map((category) => (
                     <Card
                       key={category.id}
-                      className={`overflow-hidden h-full ${selectedCategories.includes(category.id) ? "border-primary" : ""} hover:shadow-md transition-shadow`}
+                      className={`overflow-hidden h-full ${selectedCategories.includes(category.id) ? "border-primary border-2" : ""} hover:shadow-lg transition-all duration-200 transform hover:-translate-y-1`}
                     >
                       {editingCategory?.id === category.id ? (
                         <CardContent className="p-4">
@@ -1166,7 +1385,7 @@ const Categories = () => {
                         </CardContent>
                       ) : (
                         <div className="flex flex-col h-full">
-                          <CardHeader className="pb-2 pt-4 px-4">
+                          <CardHeader className="pb-2 pt-4 px-4 bg-muted/20">
                             <div className="flex items-center justify-between">
                               <div className="flex items-center gap-2">
                                 <Checkbox
@@ -1178,7 +1397,10 @@ const Categories = () => {
                                     toggleCategorySelection(category.id)
                                   }
                                 />
-                                <CardTitle className="text-base font-medium">
+                                <CardTitle
+                                  className="text-base font-medium truncate max-w-[150px]"
+                                  title={category.name}
+                                >
                                   {category.name}
                                 </CardTitle>
                               </div>
@@ -1187,48 +1409,71 @@ const Categories = () => {
                               </div>
                             </div>
                           </CardHeader>
-                          <CardContent className="p-4 pt-0 flex-grow">
+                          <CardContent className="p-4 pt-2 flex-grow">
                             {category.image_url && (
-                              <div className="mb-3 h-24 w-full overflow-hidden rounded-md bg-muted/30">
+                              <div className="mb-3 h-32 w-full overflow-hidden rounded-md bg-muted/30 shadow-sm flex items-center justify-center">
                                 <img
                                   src={category.image_url}
                                   alt={category.name}
-                                  className="h-full w-full object-cover transition-transform hover:scale-105"
+                                  className="max-h-full max-w-full object-contain transition-transform duration-300 hover:scale-110"
                                 />
                               </div>
                             )}
-                            {category.parent_id && (
-                              <div className="mb-2 text-xs inline-flex items-center px-2 py-1 rounded-full bg-muted">
-                                <span>Has parent</span>
+                            <div className="flex flex-wrap gap-2 mb-3">
+                              {category.parent_id && (
+                                <div className="text-xs inline-flex items-center px-2 py-1 rounded-full bg-muted">
+                                  <span>Has parent</span>
+                                </div>
+                              )}
+                              <div className="text-xs inline-flex items-center px-2 py-1 rounded-full bg-blue-100 text-blue-700 mr-1">
+                                <span>Products: {category.productCount}</span>
                               </div>
-                            )}
+                              {category.children &&
+                                category.children.length > 0 && (
+                                  <div className="text-xs inline-flex items-center px-2 py-1 rounded-full bg-green-100 text-green-700">
+                                    <span>
+                                      Subcategories: {category.children.length}
+                                    </span>
+                                  </div>
+                                )}
+                            </div>
                             {category.description && (
-                              <p className="text-sm text-muted-foreground line-clamp-2">
+                              <p className="text-sm text-muted-foreground line-clamp-2 mt-2">
                                 {category.description}
                               </p>
                             )}
+                            {!category.description && (
+                              <p className="text-sm text-muted-foreground italic line-clamp-2 mt-2">
+                                No description available
+                              </p>
+                            )}
                           </CardContent>
-                          <CardFooter className="p-4 pt-0 flex justify-between border-t mt-auto">
+                          <CardFooter className="p-3 pt-0 flex justify-between border-t mt-auto bg-muted/10">
                             <div className="text-xs text-muted-foreground">
-                              Products: <span className="font-medium">0</span>
+                              Slug:{" "}
+                              <span className="font-medium">
+                                {category.slug}
+                              </span>
                             </div>
                             <div className="flex space-x-2">
                               <Button
-                                variant="ghost"
+                                variant="outline"
                                 size="sm"
                                 onClick={() => handleEditClick(category)}
-                                className="h-8 w-8 p-0"
+                                className="h-8 w-8 p-0 hover:bg-primary/10 hover:text-primary"
+                                title="Edit category"
                               >
                                 <Edit className="h-4 w-4" />
                               </Button>
                               <Button
-                                variant="ghost"
+                                variant="outline"
                                 size="sm"
                                 onClick={() => {
                                   setSelectedCategories([category.id]);
                                   setIsDeleteDialogOpen(true);
                                 }}
                                 className="h-8 w-8 p-0 text-red-500 hover:text-red-600 hover:bg-red-50"
+                                title="Delete category"
                               >
                                 <Trash2 className="h-4 w-4" />
                               </Button>
@@ -1249,8 +1494,9 @@ const Categories = () => {
                           <Checkbox
                             id="select-all-list"
                             checked={
-                              categories.length > 0 &&
-                              selectedCategories.length === categories.length
+                              filteredCategories.length > 0 &&
+                              selectedCategories.length ===
+                                filteredCategories.length
                             }
                             onCheckedChange={toggleAllCategories}
                           />
@@ -1261,80 +1507,31 @@ const Categories = () => {
                         <th className="p-2 text-left font-medium">
                           Description
                         </th>
+                        <th className="p-2 text-left font-medium">Products</th>
                         <th className="p-2 text-left font-medium">Actions</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y">
-                      {categories.map((category) => (
-                        <tr
-                          key={category.id}
-                          className={`${selectedCategories.includes(category.id) ? "bg-primary/5" : ""}`}
-                        >
-                          <td className="p-2">
-                            <Checkbox
-                              id={`select-list-${category.id}`}
-                              checked={selectedCategories.includes(category.id)}
-                              onCheckedChange={() =>
-                                toggleCategorySelection(category.id)
-                              }
-                            />
-                          </td>
-                          <td className="p-2">
-                            <div className="flex items-center">
-                              <div
-                                className="font-medium"
-                                style={{
-                                  marginLeft: `${(category.level - 1) * 20}px`,
-                                  display: "flex",
-                                  alignItems: "center",
-                                  gap: "8px",
-                                }}
-                              >
-                                {category.image_url ? (
-                                  <img
-                                    src={category.image_url}
-                                    alt={category.name}
-                                    className="h-8 w-8 object-cover rounded-md"
-                                  />
-                                ) : (
-                                  <div className="h-8 w-8 bg-muted rounded-md flex items-center justify-center">
-                                    <Image className="h-4 w-4 text-muted-foreground" />
-                                  </div>
-                                )}
-                                {category.name}
-                              </div>
-                            </div>
-                          </td>
-                          <td className="p-2">{category.level}</td>
-                          <td className="p-2">
-                            {category.parent_id ? "Yes" : "No"}
-                          </td>
-                          <td className="p-2 max-w-xs truncate">
-                            {category.description || "-"}
-                          </td>
-                          <td className="p-2">
-                            <div className="flex space-x-2">
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => handleEditClick(category)}
-                              >
-                                <Edit className="h-4 w-4" />
-                              </Button>
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => {
-                                  setSelectedCategories([category.id]);
-                                  setIsDeleteDialogOpen(true);
-                                }}
-                              >
-                                <Trash2 className="h-4 w-4 text-red-500" />
-                              </Button>
-                            </div>
-                          </td>
-                        </tr>
-                      ))}
+                      {/* Render top-level categories first */}
+                      {filteredCategories
+                        .filter((category) => category.level === 1)
+                        .map((category) => (
+                          <CategoryTreeItem
+                            key={category.id}
+                            category={category}
+                            allCategories={filteredCategories}
+                            selectedCategories={selectedCategories}
+                            toggleCategorySelection={toggleCategorySelection}
+                            handleEditClick={handleEditClick}
+                            handleDeleteCategory={handleDeleteCategory}
+                            isExpanded={
+                              (category as CategoryWithChildren).isExpanded
+                            }
+                            onToggleExpand={(categoryId) =>
+                              toggleCategoryExpansion(categoryId)
+                            }
+                          />
+                        ))}
                     </tbody>
                   </table>
                 </div>
@@ -1412,6 +1609,167 @@ const Categories = () => {
         </AlertDialogContent>
       </AlertDialog>
     </div>
+  );
+};
+
+// Recursive CategoryTreeItem component for list view
+const CategoryTreeItem = ({
+  category,
+  allCategories,
+  selectedCategories,
+  toggleCategorySelection,
+  handleEditClick,
+  handleDeleteCategory,
+  level = 0,
+  isExpanded = false,
+  onToggleExpand,
+}: {
+  category: CategoryWithChildren;
+  allCategories: Category[];
+  selectedCategories: string[];
+  toggleCategorySelection: (id: string) => void;
+  handleEditClick: (category: Category) => void;
+  handleDeleteCategory: (id: string) => void;
+  level?: number;
+  isExpanded?: boolean;
+  onToggleExpand?: (categoryId: string) => void;
+}) => {
+  // Find parent category name if it exists
+  const parentCategory = category.parent_id
+    ? allCategories.find((cat) => cat.id === category.parent_id)
+    : null;
+
+  // Find children categories - only direct children for this category
+  const childCategories = allCategories.filter(
+    (cat) => cat.parent_id === category.id,
+  );
+
+  return (
+    <>
+      <tr
+        key={category.id}
+        className={`${selectedCategories.includes(category.id) ? "bg-primary/5" : ""}`}
+      >
+        <td className="p-2">
+          <Checkbox
+            id={`select-list-${category.id}`}
+            checked={selectedCategories.includes(category.id)}
+            onCheckedChange={() => toggleCategorySelection(category.id)}
+          />
+        </td>
+        <td className="p-2">
+          <div className="flex items-center">
+            <div
+              className="font-medium"
+              style={{
+                marginLeft: `${level * 20}px`,
+                display: "flex",
+                alignItems: "center",
+                gap: "8px",
+              }}
+            >
+              {level > 0 && (
+                <div className="text-muted-foreground mr-1">
+                  {Array(level).fill("—").join("")}
+                </div>
+              )}
+              {childCategories.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => onToggleExpand && onToggleExpand(category.id)}
+                  className="p-1 rounded-sm hover:bg-muted transition-colors"
+                >
+                  {isExpanded ? (
+                    <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                  ) : (
+                    <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                  )}
+                </button>
+              )}
+              {category.image_url ? (
+                <img
+                  src={category.image_url}
+                  alt={category.name}
+                  className="h-8 w-8 object-cover rounded-md"
+                />
+              ) : (
+                <div className="h-8 w-8 bg-muted rounded-md flex items-center justify-center">
+                  {category.level === 1 ? (
+                    <Folder className="h-4 w-4 text-muted-foreground" />
+                  ) : (
+                    <Image className="h-4 w-4 text-muted-foreground" />
+                  )}
+                </div>
+              )}
+              {category.name}
+              {childCategories.length > 0 && (
+                <span className="text-xs text-muted-foreground ml-2">
+                  ({childCategories.length} subcategories)
+                </span>
+              )}
+            </div>
+          </div>
+        </td>
+        <td className="p-2">
+          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs bg-primary/10 text-primary">
+            Level {category.level}
+          </span>
+        </td>
+        <td className="p-2">
+          {parentCategory ? (
+            <span className="text-sm">{parentCategory.name}</span>
+          ) : (
+            <span className="text-sm text-muted-foreground">None</span>
+          )}
+        </td>
+        <td className="p-2 max-w-xs truncate">{category.description || "-"}</td>
+        <td className="p-2">
+          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs bg-blue-100 text-blue-700">
+            {category.productCount} products
+          </span>
+        </td>
+        <td className="p-2">
+          <div className="flex space-x-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => handleEditClick(category)}
+              className="h-8 w-8 p-0 hover:bg-primary/10 hover:text-primary"
+              title="Edit category"
+            >
+              <Edit className="h-4 w-4" />
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => handleDeleteCategory(category.id)}
+              className="h-8 w-8 p-0 text-red-500 hover:text-red-600 hover:bg-red-50"
+              title="Delete category"
+            >
+              <Trash2 className="h-4 w-4" />
+            </Button>
+          </div>
+        </td>
+      </tr>
+      {isExpanded && childCategories.length > 0 && (
+        <>
+          {childCategories.map((childCategory) => (
+            <CategoryTreeItem
+              key={childCategory.id}
+              category={childCategory as CategoryWithChildren}
+              allCategories={allCategories}
+              selectedCategories={selectedCategories}
+              toggleCategorySelection={toggleCategorySelection}
+              handleEditClick={handleEditClick}
+              handleDeleteCategory={handleDeleteCategory}
+              level={level + 1}
+              isExpanded={(childCategory as CategoryWithChildren).isExpanded}
+              onToggleExpand={onToggleExpand}
+            />
+          ))}
+        </>
+      )}
+    </>
   );
 };
 
