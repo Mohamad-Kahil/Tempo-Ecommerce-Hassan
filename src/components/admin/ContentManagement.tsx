@@ -410,25 +410,131 @@ const ContentManagement = () => {
                           </div>
 
                           <div className="space-y-2">
-                            <Label htmlFor="hero-image">Image URL</Label>
-                            <div className="flex space-x-2">
-                              <Input
-                                id="hero-image"
-                                value={
-                                  selectedHero.image_url ||
-                                  selectedHero.image ||
-                                  ""
-                                }
-                                onChange={(e) =>
-                                  setSelectedHero({
-                                    ...selectedHero,
-                                    image_url: e.target.value,
-                                  })
-                                }
-                              />
-                              <Button variant="outline" size="icon">
-                                <Upload className="h-4 w-4" />
-                              </Button>
+                            <Label htmlFor="hero-image">Image</Label>
+                            <div className="flex flex-col space-y-2">
+                              {selectedHero.image_url && (
+                                <div className="relative w-full h-40 mb-2 overflow-hidden rounded-md">
+                                  <img
+                                    src={selectedHero.image_url}
+                                    alt="Hero image"
+                                    className="w-full h-full object-cover"
+                                  />
+                                </div>
+                              )}
+                              <div className="flex space-x-2">
+                                <Input
+                                  id="hero-image"
+                                  value={
+                                    selectedHero.image_url ||
+                                    selectedHero.image ||
+                                    ""
+                                  }
+                                  onChange={(e) =>
+                                    setSelectedHero({
+                                      ...selectedHero,
+                                      image_url: e.target.value,
+                                    })
+                                  }
+                                  placeholder="Enter image URL or upload an image"
+                                />
+                                <Input
+                                  type="file"
+                                  id="hero-image-upload"
+                                  className="hidden"
+                                  accept="image/jpeg,image/png,image/gif,image/webp"
+                                  onChange={async (e) => {
+                                    const file = e.target.files?.[0];
+                                    if (!file) return;
+
+                                    // Validate file type
+                                    const validTypes = [
+                                      "image/jpeg",
+                                      "image/png",
+                                      "image/gif",
+                                      "image/webp",
+                                    ];
+                                    if (!validTypes.includes(file.type)) {
+                                      setError(
+                                        "Please upload a JPG, PNG, GIF, or WEBP image.",
+                                      );
+                                      return;
+                                    }
+
+                                    // Validate file size (max 5MB)
+                                    if (file.size > 5 * 1024 * 1024) {
+                                      setError(
+                                        "Please upload an image smaller than 5MB.",
+                                      );
+                                      return;
+                                    }
+
+                                    try {
+                                      setLoading(true);
+
+                                      // Generate a unique filename
+                                      const fileExt = file.name
+                                        .split(".")
+                                        .pop();
+                                      const fileName = `hero_${Math.random().toString(36).substring(2, 15)}_${Date.now()}.${fileExt}`;
+                                      const filePath = `hero-images/${fileName}`;
+
+                                      // Upload the file to Supabase Storage
+                                      const { error: uploadError, data } =
+                                        await supabase.storage
+                                          .from("images")
+                                          .upload(filePath, file, {
+                                            cacheControl: "3600",
+                                            upsert: true,
+                                            contentType: file.type,
+                                          });
+
+                                      if (uploadError) throw uploadError;
+
+                                      // Get the public URL
+                                      const {
+                                        data: { publicUrl },
+                                      } = supabase.storage
+                                        .from("images")
+                                        .getPublicUrl(filePath);
+
+                                      // Update the hero with the new image URL
+                                      setSelectedHero({
+                                        ...selectedHero,
+                                        image_url: publicUrl,
+                                      });
+
+                                      // Reset the file input
+                                      e.target.value = "";
+                                    } catch (err) {
+                                      console.error(
+                                        "Error uploading image:",
+                                        err,
+                                      );
+                                      setError(
+                                        "Failed to upload image. Please try again.",
+                                      );
+                                    } finally {
+                                      setLoading(false);
+                                    }
+                                  }}
+                                />
+                                <Button
+                                  variant="outline"
+                                  size="icon"
+                                  onClick={() =>
+                                    document
+                                      .getElementById("hero-image-upload")
+                                      ?.click()
+                                  }
+                                  disabled={loading}
+                                >
+                                  {loading ? (
+                                    <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+                                  ) : (
+                                    <Upload className="h-4 w-4" />
+                                  )}
+                                </Button>
+                              </div>
                             </div>
                           </div>
 
@@ -593,25 +699,131 @@ const ContentManagement = () => {
                           </div>
 
                           <div className="space-y-2">
-                            <Label htmlFor="banner-image">Image URL</Label>
-                            <div className="flex space-x-2">
-                              <Input
-                                id="banner-image"
-                                value={
-                                  selectedBanner.image_url ||
-                                  selectedBanner.image ||
-                                  ""
-                                }
-                                onChange={(e) =>
-                                  setSelectedBanner({
-                                    ...selectedBanner,
-                                    image_url: e.target.value,
-                                  })
-                                }
-                              />
-                              <Button variant="outline" size="icon">
-                                <Upload className="h-4 w-4" />
-                              </Button>
+                            <Label htmlFor="banner-image">Image</Label>
+                            <div className="flex flex-col space-y-2">
+                              {selectedBanner.image_url && (
+                                <div className="relative w-full h-40 mb-2 overflow-hidden rounded-md">
+                                  <img
+                                    src={selectedBanner.image_url}
+                                    alt="Banner image"
+                                    className="w-full h-full object-cover"
+                                  />
+                                </div>
+                              )}
+                              <div className="flex space-x-2">
+                                <Input
+                                  id="banner-image"
+                                  value={
+                                    selectedBanner.image_url ||
+                                    selectedBanner.image ||
+                                    ""
+                                  }
+                                  onChange={(e) =>
+                                    setSelectedBanner({
+                                      ...selectedBanner,
+                                      image_url: e.target.value,
+                                    })
+                                  }
+                                  placeholder="Enter image URL or upload an image"
+                                />
+                                <Input
+                                  type="file"
+                                  id="banner-image-upload"
+                                  className="hidden"
+                                  accept="image/jpeg,image/png,image/gif,image/webp"
+                                  onChange={async (e) => {
+                                    const file = e.target.files?.[0];
+                                    if (!file) return;
+
+                                    // Validate file type
+                                    const validTypes = [
+                                      "image/jpeg",
+                                      "image/png",
+                                      "image/gif",
+                                      "image/webp",
+                                    ];
+                                    if (!validTypes.includes(file.type)) {
+                                      setError(
+                                        "Please upload a JPG, PNG, GIF, or WEBP image.",
+                                      );
+                                      return;
+                                    }
+
+                                    // Validate file size (max 5MB)
+                                    if (file.size > 5 * 1024 * 1024) {
+                                      setError(
+                                        "Please upload an image smaller than 5MB.",
+                                      );
+                                      return;
+                                    }
+
+                                    try {
+                                      setLoading(true);
+
+                                      // Generate a unique filename
+                                      const fileExt = file.name
+                                        .split(".")
+                                        .pop();
+                                      const fileName = `banner_${Math.random().toString(36).substring(2, 15)}_${Date.now()}.${fileExt}`;
+                                      const filePath = `banner-images/${fileName}`;
+
+                                      // Upload the file to Supabase Storage
+                                      const { error: uploadError, data } =
+                                        await supabase.storage
+                                          .from("images")
+                                          .upload(filePath, file, {
+                                            cacheControl: "3600",
+                                            upsert: true,
+                                            contentType: file.type,
+                                          });
+
+                                      if (uploadError) throw uploadError;
+
+                                      // Get the public URL
+                                      const {
+                                        data: { publicUrl },
+                                      } = supabase.storage
+                                        .from("images")
+                                        .getPublicUrl(filePath);
+
+                                      // Update the banner with the new image URL
+                                      setSelectedBanner({
+                                        ...selectedBanner,
+                                        image_url: publicUrl,
+                                      });
+
+                                      // Reset the file input
+                                      e.target.value = "";
+                                    } catch (err) {
+                                      console.error(
+                                        "Error uploading image:",
+                                        err,
+                                      );
+                                      setError(
+                                        "Failed to upload image. Please try again.",
+                                      );
+                                    } finally {
+                                      setLoading(false);
+                                    }
+                                  }}
+                                />
+                                <Button
+                                  variant="outline"
+                                  size="icon"
+                                  onClick={() =>
+                                    document
+                                      .getElementById("banner-image-upload")
+                                      ?.click()
+                                  }
+                                  disabled={loading}
+                                >
+                                  {loading ? (
+                                    <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+                                  ) : (
+                                    <Upload className="h-4 w-4" />
+                                  )}
+                                </Button>
+                              </div>
                             </div>
                           </div>
 

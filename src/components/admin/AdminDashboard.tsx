@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import ProductsManagement from "./ProductsManagement";
 import { useAuth } from "@/context/AuthContext";
 import { Navigate } from "react-router-dom";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -23,6 +24,7 @@ import {
 } from "lucide-react";
 import ContentManagement from "./ContentManagement";
 import SupplierManagement from "./SupplierManagement";
+import Categories from "./Categories";
 
 const AdminDashboard = () => {
   const { user, isAuthenticated, isAdmin, isLoading } = useAuth();
@@ -170,37 +172,9 @@ const AdminDashboard = () => {
                 </Card>
               )}
 
-              {activeTab === "products" && (
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Products Management</CardTitle>
-                    <CardDescription>
-                      Add, edit, or remove products from your inventory.
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <p className="text-sm text-muted-foreground mb-4">
-                      This section will be implemented in the next phase.
-                    </p>
-                  </CardContent>
-                </Card>
-              )}
+              {activeTab === "products" && <ProductsManagement />}
 
-              {activeTab === "categories" && (
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Categories Management</CardTitle>
-                    <CardDescription>
-                      Manage your product categories and subcategories.
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <p className="text-sm text-muted-foreground mb-4">
-                      This section will be implemented in the next phase.
-                    </p>
-                  </CardContent>
-                </Card>
-              )}
+              {activeTab === "categories" && <Categories />}
 
               {activeTab === "suppliers" && (
                 <Card>
