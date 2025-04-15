@@ -10,6 +10,9 @@ interface UseProductsOptions {
   limit?: number;
   searchQuery?: string;
   featured?: boolean;
+  sortBy?: string;
+  sortOrder?: "asc" | "desc";
+  region?: string;
 }
 
 export function useProducts(options: UseProductsOptions = {}) {
@@ -24,7 +27,9 @@ export function useProducts(options: UseProductsOptions = {}) {
         setLoading(true);
 
         // Start building the query
-        let query = supabase.from("products").select("*", { count: "exact" });
+        let query = supabase
+          .from("products")
+          .select("*, suppliers(name)", { count: "exact" });
 
         // Apply filters based on options
         if (options.categoryId) {
@@ -43,6 +48,20 @@ export function useProducts(options: UseProductsOptions = {}) {
           query = query.ilike("name", `%${options.searchQuery}%`);
         }
 
+        if (options.region) {
+          query = query.contains("regions", [options.region]);
+        }
+
+        // Apply sorting
+        if (options.sortBy) {
+          query = query.order(options.sortBy, {
+            ascending: options.sortOrder === "asc",
+          });
+        } else {
+          // Default sorting
+          query = query.order("created_at", { ascending: false });
+        }
+
         // Apply limit if specified
         if (options.limit) {
           query = query.limit(options.limit);
@@ -53,7 +72,14 @@ export function useProducts(options: UseProductsOptions = {}) {
 
         if (error) throw error;
 
-        setProducts(data || []);
+        // Add supplier_name to each product
+        const productsWithSupplierName =
+          data?.map((product) => ({
+            ...product,
+            supplier_name: product.suppliers?.name,
+          })) || [];
+
+        setProducts(productsWithSupplierName);
         setTotalCount(count || 0);
       } catch (err) {
         setError(
@@ -72,6 +98,9 @@ export function useProducts(options: UseProductsOptions = {}) {
     options.limit,
     options.searchQuery,
     options.featured,
+    options.sortBy,
+    options.sortOrder,
+    options.region,
   ]);
 
   return { products, loading, error, totalCount };
@@ -94,13 +123,20 @@ export function useProduct(id: string | undefined) {
 
         const { data, error } = await supabase
           .from("products")
-          .select("*")
+          .select("*, categories(name), suppliers(name)")
           .eq("id", id)
           .single();
 
         if (error) throw error;
 
-        setProduct(data);
+        // Add derived fields
+        const enhancedProduct = {
+          ...data,
+          category_name: data.categories?.name,
+          supplier_name: data.suppliers?.name,
+        };
+
+        setProduct(enhancedProduct);
       } catch (err) {
         setError(
           err instanceof Error ? err : new Error("An unknown error occurred"),

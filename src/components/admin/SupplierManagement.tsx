@@ -110,6 +110,23 @@ const SupplierManagement = () => {
     setLoading(true);
     setError("");
     try {
+      // First check if there are any products associated with this supplier
+      const { data: productsData, error: productsError } = await supabase
+        .from("products")
+        .select("id")
+        .eq("supplier_id", id);
+
+      if (productsError) throw productsError;
+
+      // If there are products associated with this supplier, show an error
+      if (productsData && productsData.length > 0) {
+        setError(
+          `Cannot delete supplier: ${productsData.length} products are associated with this supplier. Please reassign or delete these products first.`,
+        );
+        return;
+      }
+
+      // If no products are associated, proceed with deletion
       const { error } = await supabase.from("suppliers").delete().eq("id", id);
       if (error) throw error;
 
@@ -122,7 +139,9 @@ const SupplierManagement = () => {
       await fetchSuppliers();
     } catch (err) {
       console.error("Error deleting supplier:", err);
-      setError("Failed to delete supplier. Please try again.");
+      setError(
+        `Failed to delete supplier: ${err.message || "Please try again."}`,
+      );
     } finally {
       setLoading(false);
     }

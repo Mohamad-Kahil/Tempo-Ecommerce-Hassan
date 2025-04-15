@@ -15,6 +15,8 @@ import {
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
 import { useProducts } from "@/hooks/useProducts";
+import { useCategories } from "@/hooks/useCategories";
+import { useSuppliers } from "@/hooks/useSuppliers";
 import ProductCard from "@/components/product/ProductCard";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -28,10 +30,19 @@ import {
   CarouselNext,
 } from "@/components/ui/carousel";
 
+interface CategoryCardProps {
+  name?: string;
+  image?: string;
+  id?: string;
+  onClick?: (id: string) => void;
+}
+
 const CategoryCard = ({
   name = "Flooring",
   image = "https://images.unsplash.com/photo-1581430872221-d1cfed785922?w=500&q=80",
-}) => {
+  id = "",
+  onClick = () => {},
+}: CategoryCardProps) => {
   return (
     <div className="relative overflow-hidden rounded-lg group cursor-pointer">
       <div className="h-[150px] w-full overflow-hidden">
@@ -41,7 +52,10 @@ const CategoryCard = ({
           className="w-full h-full object-cover transition-transform group-hover:scale-105"
         />
       </div>
-      <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent flex items-end p-4">
+      <div
+        className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent flex items-end p-4"
+        onClick={() => onClick(id)}
+      >
         <h3 className="text-white font-medium">{name}</h3>
       </div>
     </div>
@@ -76,11 +90,11 @@ const Header = () => {
     navigate("/");
   };
 
-  const handleSearch = (e) => {
+  const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
     setSearchValue(e.target.value);
   };
 
-  const handleSearchSubmit = (e) => {
+  const handleSearchSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (searchValue.trim()) {
       navigate(`/search?q=${encodeURIComponent(searchValue)}`);
@@ -103,18 +117,80 @@ const Header = () => {
             <Link to="/" className="text-sm font-medium hover:text-primary">
               Home
             </Link>
-            <a href="#" className="text-sm font-medium hover:text-primary">
-              Categories
-            </a>
-            <a href="#" className="text-sm font-medium hover:text-primary">
-              Deals
-            </a>
-            <a href="#" className="text-sm font-medium hover:text-primary">
+            <div className="relative group">
+              <Link
+                to="/categories"
+                className="text-sm font-medium hover:text-primary"
+              >
+                Categories
+              </Link>
+              <div className="absolute left-0 mt-2 w-48 bg-white shadow-lg rounded-md p-2 hidden group-hover:block z-50">
+                <Link
+                  to="/category/flooring"
+                  className="block px-4 py-2 text-sm hover:bg-gray-100 rounded-md"
+                >
+                  Flooring
+                </Link>
+                <Link
+                  to="/category/paints"
+                  className="block px-4 py-2 text-sm hover:bg-gray-100 rounded-md"
+                >
+                  Paints & Finishes
+                </Link>
+                <Link
+                  to="/category/bathroom"
+                  className="block px-4 py-2 text-sm hover:bg-gray-100 rounded-md"
+                >
+                  Bathroom Fixtures
+                </Link>
+                <Link
+                  to="/category/kitchen"
+                  className="block px-4 py-2 text-sm hover:bg-gray-100 rounded-md"
+                >
+                  Kitchen Materials
+                </Link>
+              </div>
+            </div>
+            <div className="relative group">
+              <Link
+                to="/products"
+                className="text-sm font-medium hover:text-primary"
+              >
+                Products
+              </Link>
+              <div className="absolute left-0 mt-2 w-48 bg-white shadow-lg rounded-md p-2 hidden group-hover:block z-50">
+                <Link
+                  to="/products/featured"
+                  className="block px-4 py-2 text-sm hover:bg-gray-100 rounded-md"
+                >
+                  Featured Products
+                </Link>
+                <Link
+                  to="/products/new"
+                  className="block px-4 py-2 text-sm hover:bg-gray-100 rounded-md"
+                >
+                  New Arrivals
+                </Link>
+                <Link
+                  to="/products/popular"
+                  className="block px-4 py-2 text-sm hover:bg-gray-100 rounded-md"
+                >
+                  Popular Products
+                </Link>
+              </div>
+            </div>
+            <Link
+              to="/suppliers"
+              className="text-sm font-medium hover:text-primary"
+            >
               Suppliers
-            </a>
-            <a href="#" className="text-sm font-medium hover:text-primary">
+            </Link>
+            <Link
+              to="/contact"
+              className="text-sm font-medium hover:text-primary"
+            >
               Contact
-            </a>
+            </Link>
           </nav>
 
           {/* Actions */}
@@ -180,6 +256,7 @@ const Header = () => {
                 className="pl-10 pr-4 py-2 w-full"
                 value={searchValue}
                 onChange={handleSearch}
+                type="text"
               />
             </div>
           </form>
@@ -196,30 +273,30 @@ const Header = () => {
             >
               Home
             </Link>
-            <a
-              href="#"
+            <Link
+              to="/categories"
               className="block py-2 text-sm font-medium hover:text-primary"
             >
               Categories
-            </a>
-            <a
-              href="#"
+            </Link>
+            <Link
+              to="/products"
               className="block py-2 text-sm font-medium hover:text-primary"
             >
-              Deals
-            </a>
-            <a
-              href="#"
+              Products
+            </Link>
+            <Link
+              to="/suppliers"
               className="block py-2 text-sm font-medium hover:text-primary"
             >
               Suppliers
-            </a>
-            <a
-              href="#"
+            </Link>
+            <Link
+              to="/contact"
               className="block py-2 text-sm font-medium hover:text-primary"
             >
               Contact
-            </a>
+            </Link>
             <Link
               to="/admin"
               className="block py-2 text-sm font-medium hover:text-primary"
@@ -261,6 +338,142 @@ const Header = () => {
         </div>
       )}
     </header>
+  );
+};
+
+const CategoriesGrid = () => {
+  const { categories, loading, error } = useCategories({
+    limit: 6,
+    // Remove featured flag as the column doesn't exist
+    // featured: true,
+  });
+  const navigate = useNavigate();
+
+  const handleCategoryClick = (id: string) => {
+    navigate(`/category/${id}`);
+  };
+
+  if (loading) {
+    return (
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+        {[...Array(6)].map((_, index) => (
+          <div
+            key={index}
+            className="h-[150px] w-full bg-gray-100 animate-pulse rounded-lg"
+          ></div>
+        ))}
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="text-red-500">
+        Error loading categories: {error.message}
+      </div>
+    );
+  }
+
+  if (categories.length === 0) {
+    return (
+      <div className="text-center py-8">
+        <p>No categories found in the database.</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+      {categories.map((category) => (
+        <CategoryCard
+          key={category.id}
+          id={category.id}
+          name={category.name}
+          image={
+            category.image_url ||
+            "https://placehold.co/500x500/e2e8f0/475569?text=No+Image"
+          }
+          onClick={handleCategoryClick}
+        />
+      ))}
+    </div>
+  );
+};
+
+const SuppliersList = () => {
+  const { suppliers, loading, error } = useSuppliers({ limit: 3 });
+
+  if (loading) {
+    return (
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        {[...Array(3)].map((_, index) => (
+          <div key={index} className="bg-white rounded-lg shadow animate-pulse">
+            <div className="h-[200px] bg-gray-200"></div>
+            <div className="p-6">
+              <div className="h-6 bg-gray-200 rounded w-3/4 mb-4"></div>
+              <div className="h-4 bg-gray-200 rounded mb-2"></div>
+              <div className="h-4 bg-gray-200 rounded w-5/6"></div>
+            </div>
+          </div>
+        ))}
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="text-red-500">
+        Error loading suppliers: {error.message}
+      </div>
+    );
+  }
+
+  if (suppliers.length === 0) {
+    return (
+      <div className="text-center py-8">
+        <p>No suppliers found in the database.</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      {suppliers.map((supplier) => (
+        <Card key={supplier.id} className="overflow-hidden bg-white">
+          <div className="h-[200px] overflow-hidden bg-gray-100 flex items-center justify-center">
+            {supplier.logo_url ? (
+              <img
+                src={supplier.logo_url}
+                alt={supplier.name}
+                className="w-full h-full object-cover"
+              />
+            ) : (
+              <div className="text-gray-400 text-center p-4">
+                <p className="text-lg font-medium">{supplier.name}</p>
+                <p className="text-sm">No logo available</p>
+              </div>
+            )}
+          </div>
+          <CardContent className="p-6">
+            <h3 className="font-bold text-lg mb-2">{supplier.name}</h3>
+            <p className="text-muted-foreground">
+              {supplier.description || "No description available"}
+            </p>
+          </CardContent>
+          <CardFooter className="p-6 pt-0">
+            <Button
+              variant="outline"
+              className="w-full"
+              onClick={() =>
+                (window.location.href = `/supplier/${supplier.id}`)
+              }
+            >
+              View Products
+            </Button>
+          </CardFooter>
+        </Card>
+      ))}
+    </div>
   );
 };
 
@@ -419,93 +632,35 @@ const FeaturedProducts = () => {
     );
   }
 
+  if (products.length === 0) {
+    return (
+      <div className="text-center py-8">
+        <p>No featured products found in the database.</p>
+      </div>
+    );
+  }
+
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
-      {products.length > 0 ? (
-        products.map((product) => (
-          <ProductCard
-            key={product.id}
-            id={product.id}
-            name={product.name}
-            price={product.price}
-            currency={product.currency || "USD"}
-            rating={product.rating || 4.5}
-            reviewCount={product.review_count || 10}
-            image={product.image_urls?.[0] || ""}
-            supplier={product.supplier_name || ""}
-            discount={product.discount || 0}
-            isNew={product.is_new || false}
-            inStock={(product.stock ?? 0) > 0}
-            product={product}
-            onAddToCart={(id) => console.log(`Added product ${id} to cart`)}
-            onViewDetails={(id) => (window.location.href = `/product/${id}`)}
-          />
-        ))
-      ) : (
-        // Fallback to static cards if no products are found
-        <>
-          <ProductCard
-            id="1"
-            name="Modern Ceramic Floor Tile"
-            price={299}
-            currency="EGP"
-            image="https://images.unsplash.com/photo-1581430872221-d1cfed785922?w=500&q=80"
-            rating={4.5}
-            reviewCount={120}
-            supplier="Premium Tiles Co."
-            onAddToCart={(id) => console.log(`Added product ${id} to cart`)}
-            onViewDetails={(id) => (window.location.href = `/product/${id}`)}
-          />
-          <ProductCard
-            id="2"
-            name="Luxury Bathroom Faucet - Brushed Gold"
-            price={1299}
-            currency="SAR"
-            image="https://images.unsplash.com/photo-1584622650111-993a426fbf0a?w=500&q=80"
-            rating={4.8}
-            reviewCount={85}
-            supplier="Royal Fixtures"
-            onAddToCart={(id) => console.log(`Added product ${id} to cart`)}
-            onViewDetails={(id) => (window.location.href = `/product/${id}`)}
-          />
-          <ProductCard
-            id="3"
-            name="Premium Interior Wall Paint - 5L"
-            price={450}
-            currency="AED"
-            image="https://images.unsplash.com/photo-1589939705384-5185137a7f0f?w=500&q=80"
-            rating={4.2}
-            reviewCount={65}
-            supplier="ColorMaster"
-            onAddToCart={(id) => console.log(`Added product ${id} to cart`)}
-            onViewDetails={(id) => (window.location.href = `/product/${id}`)}
-          />
-          <ProductCard
-            id="4"
-            name="Marble Kitchen Countertop - Per Meter"
-            price={3200}
-            currency="KWD"
-            image="https://images.unsplash.com/photo-1556911220-bda9f7f7597e?w=500&q=80"
-            rating={4.7}
-            reviewCount={42}
-            supplier="Stone Experts"
-            onAddToCart={(id) => console.log(`Added product ${id} to cart`)}
-            onViewDetails={(id) => (window.location.href = `/product/${id}`)}
-          />
-          <ProductCard
-            id="5"
-            name="Modern Pendant Light Fixture"
-            price={899}
-            currency="EGP"
-            image="https://images.unsplash.com/photo-1540932239986-30128078f3c5?w=500&q=80"
-            rating={4.4}
-            reviewCount={78}
-            supplier="LightWorks"
-            onAddToCart={(id) => console.log(`Added product ${id} to cart`)}
-            onViewDetails={(id) => (window.location.href = `/product/${id}`)}
-          />
-        </>
-      )}
+      {products.map((product) => (
+        <ProductCard
+          key={product.id}
+          id={product.id}
+          name={product.name}
+          price={product.price || 0}
+          currency={product.currency || "USD"}
+          rating={product.rating || 0}
+          reviewCount={product.review_count || 0}
+          image={product.image_urls?.[0] || ""}
+          supplier={product.supplier_name || ""}
+          discount={product.discount || 0}
+          isNew={product.is_new || false}
+          inStock={(product.stock ?? 0) > 0}
+          product={product}
+          onAddToCart={(id) => console.log(`Added product ${id} to cart`)}
+          onViewDetails={(id) => (window.location.href = `/product/${id}`)}
+        />
+      ))}
     </div>
   );
 };
@@ -535,93 +690,35 @@ const PopularProducts = () => {
     );
   }
 
+  if (products.length === 0) {
+    return (
+      <div className="text-center py-8">
+        <p>No products found in the database.</p>
+      </div>
+    );
+  }
+
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
-      {products.length > 0 ? (
-        products.map((product) => (
-          <ProductCard
-            key={product.id}
-            id={product.id}
-            name={product.name}
-            price={product.price}
-            currency={product.currency || "USD"}
-            rating={product.rating || 4.5}
-            reviewCount={product.review_count || 10}
-            image={product.image_urls?.[0] || ""}
-            supplier={product.supplier_name || ""}
-            discount={product.discount || 0}
-            isNew={product.is_new || false}
-            inStock={(product.stock ?? 0) > 0}
-            product={product}
-            onAddToCart={(id) => console.log(`Added product ${id} to cart`)}
-            onViewDetails={(id) => (window.location.href = `/product/${id}`)}
-          />
-        ))
-      ) : (
-        // Fallback to static cards if no products are found
-        <>
-          <ProductCard
-            id="6"
-            name="Egyptian Marble Flooring Tiles"
-            price={499}
-            currency="EGP"
-            image="https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?w=500&q=80"
-            rating={4.6}
-            reviewCount={92}
-            supplier="Cairo Marble"
-            onAddToCart={(id) => console.log(`Added product ${id} to cart`)}
-            onViewDetails={(id) => (window.location.href = `/product/${id}`)}
-          />
-          <ProductCard
-            id="7"
-            name="Traditional Ceramic Wall Tiles"
-            price={199}
-            currency="EGP"
-            image="https://images.unsplash.com/photo-1484154218962-a197022b5858?w=500&q=80"
-            rating={4.3}
-            reviewCount={54}
-            supplier="Alexandria Ceramics"
-            onAddToCart={(id) => console.log(`Added product ${id} to cart`)}
-            onViewDetails={(id) => (window.location.href = `/product/${id}`)}
-          />
-          <ProductCard
-            id="8"
-            name="Premium Door Handle Set"
-            price={350}
-            currency="EGP"
-            image="https://images.unsplash.com/photo-1544161513-0179fe746fd5?w=500&q=80"
-            rating={4.4}
-            reviewCount={37}
-            supplier="Hardware Plus"
-            onAddToCart={(id) => console.log(`Added product ${id} to cart`)}
-            onViewDetails={(id) => (window.location.href = `/product/${id}`)}
-          />
-          <ProductCard
-            id="9"
-            name="Modern Ceiling Fan with LED Light"
-            price={1200}
-            currency="EGP"
-            image="https://images.unsplash.com/photo-1513694203232-719a280e022f?w=500&q=80"
-            rating={4.2}
-            reviewCount={28}
-            supplier="Cool Breeze"
-            onAddToCart={(id) => console.log(`Added product ${id} to cart`)}
-            onViewDetails={(id) => (window.location.href = `/product/${id}`)}
-          />
-          <ProductCard
-            id="10"
-            name="Luxury Bathroom Shower Set"
-            price={2499}
-            currency="EGP"
-            image="https://images.unsplash.com/photo-1564540583246-934409427776?w=500&q=80"
-            rating={4.7}
-            reviewCount={63}
-            supplier="Bath Elegance"
-            onAddToCart={(id) => console.log(`Added product ${id} to cart`)}
-            onViewDetails={(id) => (window.location.href = `/product/${id}`)}
-          />
-        </>
-      )}
+      {products.map((product) => (
+        <ProductCard
+          key={product.id}
+          id={product.id}
+          name={product.name}
+          price={product.price || 0}
+          currency={product.currency || "USD"}
+          rating={product.rating || 0}
+          reviewCount={product.review_count || 0}
+          image={product.image_urls?.[0] || ""}
+          supplier={product.supplier_name || ""}
+          discount={product.discount || 0}
+          isNew={product.is_new || false}
+          inStock={(product.stock ?? 0) > 0}
+          product={product}
+          onAddToCart={(id) => console.log(`Added product ${id} to cart`)}
+          onViewDetails={(id) => (window.location.href = `/product/${id}`)}
+        />
+      ))}
     </div>
   );
 };
@@ -699,32 +796,7 @@ const HomePage = () => {
               </Button>
             </div>
 
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-              <CategoryCard
-                name="Flooring"
-                image="https://images.unsplash.com/photo-1581430872221-d1cfed785922?w=500&q=80"
-              />
-              <CategoryCard
-                name="Paints & Finishes"
-                image="https://images.unsplash.com/photo-1589939705384-5185137a7f0f?w=500&q=80"
-              />
-              <CategoryCard
-                name="Bathroom Fixtures"
-                image="https://images.unsplash.com/photo-1584622650111-993a426fbf0a?w=500&q=80"
-              />
-              <CategoryCard
-                name="Kitchen Materials"
-                image="https://images.unsplash.com/photo-1556911220-bda9f7f7597e?w=500&q=80"
-              />
-              <CategoryCard
-                name="Lighting"
-                image="https://images.unsplash.com/photo-1540932239986-30128078f3c5?w=500&q=80"
-              />
-              <CategoryCard
-                name="Doors & Windows"
-                image="https://images.unsplash.com/photo-1509644851169-2acc08aa25b5?w=500&q=80"
-              />
-            </div>
+            <CategoriesGrid />
           </div>
         </section>
 
@@ -772,53 +844,7 @@ const HomePage = () => {
         <section className="py-12 bg-gray-50">
           <div className="container mx-auto px-4">
             <h2 className="text-2xl font-bold mb-8">Featured Suppliers</h2>
-
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              {[
-                {
-                  name: "Premium Tiles Co.",
-                  image:
-                    "https://images.unsplash.com/photo-1577415124269-fc1140a69e91?w=500&q=80",
-                  description:
-                    "Leading supplier of premium tiles and flooring solutions",
-                },
-                {
-                  name: "Royal Fixtures",
-                  image:
-                    "https://images.unsplash.com/photo-1584622781564-1d987f7333c1?w=500&q=80",
-                  description:
-                    "Luxury bathroom and kitchen fixtures for modern homes",
-                },
-                {
-                  name: "Stone Experts",
-                  image:
-                    "https://images.unsplash.com/photo-1565538810643-b5bdb714032a?w=500&q=80",
-                  description:
-                    "Specialists in marble, granite and natural stone products",
-                },
-              ].map((supplier, index) => (
-                <Card key={index} className="overflow-hidden bg-white">
-                  <div className="h-[200px] overflow-hidden">
-                    <img
-                      src={supplier.image}
-                      alt={supplier.name}
-                      className="w-full h-full object-cover"
-                    />
-                  </div>
-                  <CardContent className="p-6">
-                    <h3 className="font-bold text-lg mb-2">{supplier.name}</h3>
-                    <p className="text-muted-foreground">
-                      {supplier.description}
-                    </p>
-                  </CardContent>
-                  <CardFooter className="p-6 pt-0">
-                    <Button variant="outline" className="w-full">
-                      View Products
-                    </Button>
-                  </CardFooter>
-                </Card>
-              ))}
-            </div>
+            <SuppliersList />
           </div>
         </section>
 

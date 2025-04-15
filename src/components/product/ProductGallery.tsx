@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 import {
   useProductImages,
+  useProductImageUrls,
   transformImagesToGalleryFormat,
 } from "@/hooks/useProductImages";
 
@@ -31,7 +32,10 @@ const ProductGallery = ({
   const [isZoomDialogOpen, setIsZoomDialogOpen] = useState(false);
 
   // Fetch images from Supabase if productId is provided
-  const { images: dbImages, loading } = useProductImages(productId);
+  const { images: dbImages, loading: dbImagesLoading } =
+    useProductImages(productId);
+  const { images: imageUrls, loading: imageUrlsLoading } =
+    useProductImageUrls(productId);
 
   // Process provided images if they're simple strings
   const processStringImages = (imgs: string[]): ProductImage[] => {
@@ -57,53 +61,26 @@ const ProductGallery = ({
       return transformImagesToGalleryFormat(dbImages);
     }
 
+    if (imageUrls.length > 0) {
+      return processStringImages(imageUrls);
+    }
+
     // Fallback images
-    return [
-      {
-        id: "1",
-        url: "https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?w=800&q=80",
-        alt: "Modern kitchen interior with white cabinets",
-        type: "image",
-      },
-      {
-        id: "2",
-        url: "https://images.unsplash.com/photo-1600585152220-90363fe7e115?w=800&q=80",
-        alt: "Stylish bathroom with marble countertop",
-        type: "image",
-      },
-      {
-        id: "3",
-        url: "https://images.unsplash.com/photo-1600566752355-35792bedcfea?w=800&q=80",
-        alt: "Contemporary living room furniture",
-        type: "image",
-      },
-      {
-        id: "4",
-        url: "https://images.unsplash.com/photo-1600210492493-0946911123ea?w=800&q=80",
-        alt: "Elegant dining room set",
-        type: "image",
-      },
-      {
-        id: "5",
-        url: "https://images.unsplash.com/photo-1600566753086-00f18fb6b3ea?w=800&q=80",
-        alt: "Product demonstration video",
-        type: "video",
-      },
-    ];
+    return [];
   })();
 
   const handlePrevious = () => {
+    if (images.length === 0) return;
     setCurrentImageIndex((prev) => (prev === 0 ? images.length - 1 : prev - 1));
   };
 
   const handleNext = () => {
+    if (images.length === 0) return;
     setCurrentImageIndex((prev) => (prev === images.length - 1 ? 0 : prev + 1));
   };
 
-  const currentImage = images[currentImageIndex];
-
   // Show loading state if fetching images
-  if (loading && productId) {
+  if ((dbImagesLoading || imageUrlsLoading) && productId) {
     return (
       <div className="w-full max-w-[700px] bg-background p-4 flex justify-center items-center h-[400px]">
         <div className="animate-pulse flex flex-col items-center">
@@ -117,6 +94,19 @@ const ProductGallery = ({
       </div>
     );
   }
+
+  // If no images available
+  if (images.length === 0) {
+    return (
+      <div className="w-full max-w-[700px] bg-background p-4 flex justify-center items-center h-[400px] border border-dashed border-gray-300 rounded-lg">
+        <div className="text-center text-gray-500">
+          <p>No images available</p>
+        </div>
+      </div>
+    );
+  }
+
+  const currentImage = images[currentImageIndex];
 
   return (
     <div className="w-full max-w-[700px] bg-background">

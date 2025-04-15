@@ -31,139 +31,43 @@ const ProductPage = () => {
     limit: 4,
   });
 
-  // Fallback product data if database fetch fails
-  const fallbackProduct = {
-    id: id || "1",
-    name: "Premium Ceramic Floor Tile - Marble Effect",
-    description:
-      "High-quality ceramic floor tiles with elegant marble effect. Perfect for kitchens, bathrooms, and living areas. Durable, stain-resistant, and easy to clean.",
-    price: 249.99,
-    currency: "AED",
-    rating: 4.7,
-    reviewCount: 124,
-    stock: 56,
-    sku: "TL-MRB-001",
-    brand: "LuxTile",
-    supplier: "Al Futtaim Building Materials",
-    category: "Flooring > Tiles > Ceramic > Marble Effect",
-    images: [
-      "https://images.unsplash.com/photo-1600607686527-6fb886090705?w=800&q=80",
-      "https://images.unsplash.com/photo-1600607687644-c7ddd0d03d62?w=800&q=80",
-      "https://images.unsplash.com/photo-1600607687920-4e4a92f082f6?w=800&q=80",
-      "https://images.unsplash.com/photo-1600607688066-89667a2157c2?w=800&q=80",
-    ],
-    specifications: [
-      { name: "Material", value: "Ceramic" },
-      { name: "Size", value: "60cm x 60cm" },
-      { name: "Thickness", value: "10mm" },
-      { name: "Finish", value: "Polished" },
-      { name: "Color", value: "White/Gray" },
-      { name: "Water Absorption", value: "<0.5%" },
-      { name: "Slip Resistance", value: "R9" },
-      { name: "Package Quantity", value: "6 tiles (2.16 sq.m)" },
-    ],
-    features: [
-      "Stain resistant",
-      "Scratch resistant",
-      "Frost resistant",
-      "Easy to clean",
-      "Low maintenance",
-      "Suitable for underfloor heating",
-    ],
-    regions: ["UAE", "KSA", "Kuwait", "Egypt"],
-    deliveryTime: "3-5 business days",
-    tags: ["ceramic", "tile", "marble-effect", "flooring", "interior"],
-  };
-
-  // Use database product if available, otherwise use fallback
+  // Use only database product without fallback
   const product = dbProduct
     ? {
         id: dbProduct.id,
-        name: dbProduct.name || fallbackProduct.name,
-        description: dbProduct.description || fallbackProduct.description,
-        price: dbProduct.price || fallbackProduct.price,
+        name: dbProduct.name || "Product",
+        description: dbProduct.description || "No description available",
+        price: dbProduct.price || 0,
         currency: dbProduct.currency || "USD",
-        rating: dbProduct.rating || 4.5,
+        rating: dbProduct.rating || 0,
         reviewCount: dbProduct.review_count || 0,
         stock: dbProduct.stock || 0,
         sku: dbProduct.sku || "N/A",
         brand: dbProduct.brand || "N/A",
         supplier: dbProduct.supplier_name || "Unknown Supplier",
         category: dbProduct.category_name || "Uncategorized",
-        images: dbProduct.image_urls || fallbackProduct.images,
-        specifications:
-          dbProduct.specifications || fallbackProduct.specifications,
-        features: dbProduct.features || fallbackProduct.features,
-        regions: dbProduct.regions || fallbackProduct.regions,
+        images: dbProduct.image_urls || [],
+        specifications: dbProduct.specifications || [],
+        features: dbProduct.features || [],
+        regions: dbProduct.regions || [],
         deliveryTime: dbProduct.delivery_time || "3-5 business days",
-        tags: dbProduct.tags || fallbackProduct.tags,
+        tags: dbProduct.tags || [],
       }
-    : fallbackProduct;
+    : null;
 
-  // Fallback related products if database fetch fails
-  const fallbackRelatedProducts = [
-    {
-      id: "2",
-      name: "Tile Adhesive - Premium Grade",
-      price: 89.99,
-      currency: "AED",
-      rating: 4.5,
-      reviewCount: 78,
-      image:
-        "https://images.unsplash.com/photo-1581091226033-d5c48150dbaa?w=800&q=80",
-      supplier: "Al Futtaim Building Materials",
-    },
-    {
-      id: "3",
-      name: "Tile Grout - White",
-      price: 45.99,
-      currency: "AED",
-      rating: 4.3,
-      reviewCount: 56,
-      image:
-        "https://images.unsplash.com/photo-1581092918056-0c4c3acd3789?w=800&q=80",
-      supplier: "Dubai Ceramics",
-    },
-    {
-      id: "4",
-      name: "Tile Spacers (200 pcs)",
-      price: 12.99,
-      currency: "AED",
-      rating: 4.8,
-      reviewCount: 112,
-      image:
-        "https://images.unsplash.com/photo-1581092160607-ee22731c9c7c?w=800&q=80",
-      supplier: "Tools & More",
-    },
-    {
-      id: "5",
-      name: "Tile Cutter - Professional",
-      price: 349.99,
-      currency: "AED",
-      rating: 4.6,
-      reviewCount: 43,
-      image:
-        "https://images.unsplash.com/photo-1581092580497-e0d23cbdf1dc?w=800&q=80",
-      supplier: "Tools & More",
-    },
-  ];
-
-  // Use database related products if available, otherwise use fallback
-  const relatedProducts =
-    relatedDbProducts && relatedDbProducts.length > 0
-      ? relatedDbProducts.map((p) => ({
-          id: p.id,
-          name: p.name || "",
-          price: p.price || 0,
-          currency: p.currency || "USD",
-          rating: p.rating || 4.5,
-          reviewCount: p.review_count || 0,
-          image:
-            p.image_urls?.[0] ||
-            "https://images.unsplash.com/photo-1581091226033-d5c48150dbaa?w=800&q=80",
-          supplier: p.supplier_name || "Unknown Supplier",
-        }))
-      : fallbackRelatedProducts;
+  // Use only database related products without fallback
+  const relatedProducts = relatedDbProducts
+    ? relatedDbProducts.map((p) => ({
+        id: p.id,
+        name: p.name || "",
+        price: p.price || 0,
+        currency: p.currency || "USD",
+        rating: p.rating || 0,
+        reviewCount: p.review_count || 0,
+        image: p.image_urls?.[0] || "",
+        supplier: p.supplier_name || "",
+      }))
+    : [];
 
   const incrementQuantity = () => setQuantity((prev) => prev + 1);
   const decrementQuantity = () =>
@@ -179,6 +83,45 @@ const ProductPage = () => {
     // Optionally navigate to cart
     // navigate('/cart');
   };
+
+  if (loading) {
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <div className="animate-pulse">
+          <div className="h-8 bg-gray-200 rounded w-1/4 mb-4"></div>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            <div className="h-[400px] bg-gray-200 rounded"></div>
+            <div className="space-y-4">
+              <div className="h-8 bg-gray-200 rounded w-3/4"></div>
+              <div className="h-4 bg-gray-200 rounded w-1/2"></div>
+              <div className="h-6 bg-gray-200 rounded w-1/4"></div>
+              <div className="space-y-2">
+                <div className="h-4 bg-gray-200 rounded"></div>
+                <div className="h-4 bg-gray-200 rounded"></div>
+                <div className="h-4 bg-gray-200 rounded"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (error || !product) {
+    return (
+      <div className="container mx-auto px-4 py-8 text-center">
+        <h2 className="text-2xl font-bold text-red-500 mb-4">
+          Error Loading Product
+        </h2>
+        <p className="mb-4">
+          {error?.message || "Product not found or unavailable"}
+        </p>
+        <Button onClick={() => navigate("/")} variant="outline">
+          Return to Home
+        </Button>
+      </div>
+    );
+  }
 
   return (
     <div className="bg-background min-h-screen">
@@ -410,14 +353,23 @@ const ProductPage = () => {
             <Card className="border-0 shadow-sm">
               <CardContent className="p-6">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {product.specifications.map((spec, index) => (
-                    <div key={index} className="flex border-b pb-2">
-                      <div className="w-1/2 font-medium">{spec.name}:</div>
-                      <div className="w-1/2 text-muted-foreground">
-                        {spec.value}
+                  {product.specifications &&
+                  Array.isArray(product.specifications) ? (
+                    product.specifications.map((spec, index) => (
+                      <div key={index} className="flex border-b pb-2">
+                        <div className="w-1/2 font-medium">{spec.name}:</div>
+                        <div className="w-1/2 text-muted-foreground">
+                          {spec.value}
+                        </div>
                       </div>
+                    ))
+                  ) : (
+                    <div className="col-span-2 text-center py-4">
+                      <p className="text-muted-foreground">
+                        No specifications available
+                      </p>
                     </div>
-                  ))}
+                  )}
                 </div>
               </CardContent>
             </Card>

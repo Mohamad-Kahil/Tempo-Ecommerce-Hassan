@@ -30,9 +30,10 @@ export function useCategories(options: UseCategoriesOptions = {}) {
           query = query.eq("parent_id", options.parentId);
         }
 
-        if (options.featured) {
-          query = query.eq("is_featured", true);
-        }
+        // Remove the is_featured filter as the column doesn't exist in the database
+        // if (options.featured) {
+        //   query = query.eq("is_featured", true);
+        // }
 
         if (options.region) {
           query = query.contains("regions", [options.region]);

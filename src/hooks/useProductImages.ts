@@ -24,7 +24,7 @@ export function useProductImages(productId: string | undefined) {
           .from("product_images")
           .select("*")
           .eq("product_id", productId)
-          .order("display_order", { ascending: true });
+          .order("sort_order", { ascending: true });
 
         if (error) throw error;
 
@@ -49,8 +49,49 @@ export function useProductImages(productId: string | undefined) {
 export function transformImagesToGalleryFormat(images: ProductImage[]) {
   return images.map((image) => ({
     id: image.id,
-    url: image.image_url,
-    alt: image.alt_text || "Product image",
-    type: image.is_video ? "video" : ("image" as "image" | "video"),
+    url: image.url,
+    alt: image.alt || "Product image",
+    type: image.type as "image" | "video",
   }));
+}
+
+// Fallback function to handle product with image_urls array instead of separate images
+export function useProductImageUrls(productId: string | undefined) {
+  const [images, setImages] = useState<string[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<Error | null>(null);
+
+  useEffect(() => {
+    if (!productId) {
+      setLoading(false);
+      return;
+    }
+
+    const fetchProductWithImages = async () => {
+      try {
+        setLoading(true);
+
+        const { data, error } = await supabase
+          .from("products")
+          .select("image_urls")
+          .eq("id", productId)
+          .single();
+
+        if (error) throw error;
+
+        setImages(data?.image_urls || []);
+      } catch (err) {
+        setError(
+          err instanceof Error ? err : new Error("An unknown error occurred"),
+        );
+        console.error("Error fetching product image URLs:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchProductWithImages();
+  }, [productId]);
+
+  return { images, loading, error };
 }
