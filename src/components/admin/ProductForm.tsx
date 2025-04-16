@@ -22,11 +22,14 @@ import {
   Save,
   Globe,
   Info,
+  Tag,
 } from "lucide-react";
 import { Tables } from "@/types/supabase";
+import { useBrands } from "@/hooks/useBrands";
 
 type Product = Tables<"products">;
 type Category = Tables<"categories">;
+type Brand = Tables<"brands">;
 
 interface ProductFormProps {
   product: Partial<Product>;
@@ -45,6 +48,7 @@ interface ProductFormProps {
   onSave: () => void;
   onCancel: () => void;
   isEdit?: boolean;
+  brands?: Brand[];
 }
 
 const ProductForm: React.FC<ProductFormProps> = ({
@@ -61,7 +65,11 @@ const ProductForm: React.FC<ProductFormProps> = ({
   onSave,
   onCancel,
   isEdit = false,
+  brands = [],
 }) => {
+  // Fetch brands if not provided
+  const { brands: fetchedBrands, loading: brandsLoading } = useBrands();
+  const availableBrands = brands.length > 0 ? brands : fetchedBrands;
   const [activeTab, setActiveTab] = useState("basic");
 
   // Helper function to handle specifications updates
@@ -295,6 +303,41 @@ const ProductForm: React.FC<ProductFormProps> = ({
                 </SelectContent>
               </Select>
             </div>
+            <div className="space-y-2">
+              <Label
+                htmlFor={isEdit ? `edit-brand-${product.id}` : "new-brand"}
+              >
+                <div className="flex items-center">
+                  <Tag className="h-4 w-4 mr-1" />
+                  Brand
+                </div>
+              </Label>
+              <Select
+                value={product.brand_id || "none"}
+                onValueChange={(value) =>
+                  setProduct({
+                    ...product,
+                    brand_id: value === "none" ? null : value,
+                  })
+                }
+              >
+                <SelectTrigger
+                  id={isEdit ? `edit-brand-${product.id}` : "new-brand"}
+                >
+                  <SelectValue placeholder="Select brand" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">No Brand</SelectItem>
+                  {availableBrands.map((brand) => (
+                    <SelectItem key={brand.id} value={brand.id}>
+                      {brand.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-1 gap-4">
             <div className="space-y-2 flex items-end">
               <div className="flex items-center space-x-2">
                 <Checkbox

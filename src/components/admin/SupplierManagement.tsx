@@ -19,12 +19,15 @@ import {
 } from "@/components/ui/select";
 import { Image, Upload, X } from "lucide-react";
 import { supabase } from "@/lib/supabase";
+import { useNameValidation } from "@/hooks/useNameValidation";
+import { toast } from "@/components/ui/use-toast";
 
 const SupplierManagement = () => {
   const [suppliers, setSuppliers] = useState([]);
   const [selectedSupplier, setSelectedSupplier] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const { checkNameUniqueness, isValidating } = useNameValidation();
 
   useEffect(() => {
     fetchSuppliers();
@@ -50,6 +53,24 @@ const SupplierManagement = () => {
   };
 
   const handleSupplierSave = async () => {
+    if (!selectedSupplier?.name) {
+      setError("Supplier name is required");
+      return;
+    }
+
+    // Check name uniqueness
+    const { isUnique, field, message } = await checkNameUniqueness(
+      selectedSupplier.name,
+      selectedSupplier.name_ar,
+      "suppliers",
+      selectedSupplier.id,
+    );
+
+    if (!isUnique) {
+      setError(message || "Supplier name must be unique");
+      return;
+    }
+
     setLoading(true);
     setError("");
     try {
@@ -59,7 +80,9 @@ const SupplierManagement = () => {
           .from("suppliers")
           .update({
             name: selectedSupplier.name,
+            name_ar: selectedSupplier.name_ar,
             description: selectedSupplier.description,
+            description_ar: selectedSupplier.description_ar,
             contact_email: selectedSupplier.contact_email,
             contact_phone: selectedSupplier.contact_phone,
             website: selectedSupplier.website,
@@ -74,7 +97,9 @@ const SupplierManagement = () => {
         // Add new supplier
         const newSupplier = {
           name: selectedSupplier?.name || "New Supplier",
+          name_ar: selectedSupplier?.name_ar || "",
           description: selectedSupplier?.description || "",
+          description_ar: selectedSupplier?.description_ar || "",
           contact_email: selectedSupplier?.contact_email || "",
           contact_phone: selectedSupplier?.contact_phone || "",
           website: selectedSupplier?.website || "",
@@ -96,6 +121,12 @@ const SupplierManagement = () => {
 
       // Refresh the suppliers list
       await fetchSuppliers();
+      toast({
+        title: "Success",
+        description: selectedSupplier.id
+          ? "Supplier updated successfully"
+          : "Supplier created successfully",
+      });
     } catch (err) {
       console.error("Error saving supplier:", err);
       setError("Failed to save supplier. Please try again.");
@@ -137,6 +168,10 @@ const SupplierManagement = () => {
 
       // Refresh the suppliers list
       await fetchSuppliers();
+      toast({
+        title: "Success",
+        description: "Supplier deleted successfully",
+      });
     } catch (err) {
       console.error("Error deleting supplier:", err);
       setError(
@@ -150,7 +185,9 @@ const SupplierManagement = () => {
   const handleCreateNew = () => {
     setSelectedSupplier({
       name: "",
+      name_ar: "",
       description: "",
+      description_ar: "",
       contact_email: "",
       contact_phone: "",
       website: "",
@@ -222,6 +259,11 @@ const SupplierManagement = () => {
               >
                 <div>
                   <p className="font-medium">{supplier.name}</p>
+                  {supplier.name_ar && (
+                    <p className="text-xs text-muted-foreground" dir="rtl">
+                      {supplier.name_ar}
+                    </p>
+                  )}
                   <p className="text-xs text-muted-foreground">
                     {supplier.regions?.join(", ") || "No regions"}
                   </p>
@@ -263,35 +305,73 @@ const SupplierManagement = () => {
           <CardContent className="space-y-4">
             {selectedSupplier ? (
               <>
-                <div className="space-y-2">
-                  <Label htmlFor="supplier-name">Name *</Label>
-                  <Input
-                    id="supplier-name"
-                    value={selectedSupplier.name || ""}
-                    onChange={(e) =>
-                      setSelectedSupplier({
-                        ...selectedSupplier,
-                        name: e.target.value,
-                      })
-                    }
-                    placeholder="Supplier name"
-                    required
-                  />
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="supplier-name">Name (English) *</Label>
+                    <Input
+                      id="supplier-name"
+                      value={selectedSupplier.name || ""}
+                      onChange={(e) =>
+                        setSelectedSupplier({
+                          ...selectedSupplier,
+                          name: e.target.value,
+                        })
+                      }
+                      placeholder="Supplier name"
+                      required
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="supplier-name-ar">Name (Arabic)</Label>
+                    <Input
+                      id="supplier-name-ar"
+                      value={selectedSupplier.name_ar || ""}
+                      onChange={(e) =>
+                        setSelectedSupplier({
+                          ...selectedSupplier,
+                          name_ar: e.target.value,
+                        })
+                      }
+                      placeholder="اسم المورد"
+                      dir="rtl"
+                    />
+                  </div>
                 </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="supplier-description">Description</Label>
-                  <Textarea
-                    id="supplier-description"
-                    value={selectedSupplier.description || ""}
-                    onChange={(e) =>
-                      setSelectedSupplier({
-                        ...selectedSupplier,
-                        description: e.target.value,
-                      })
-                    }
-                    placeholder="Brief description of the supplier"
-                  />
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="supplier-description">
+                      Description (English)
+                    </Label>
+                    <Textarea
+                      id="supplier-description"
+                      value={selectedSupplier.description || ""}
+                      onChange={(e) =>
+                        setSelectedSupplier({
+                          ...selectedSupplier,
+                          description: e.target.value,
+                        })
+                      }
+                      placeholder="Brief description of the supplier"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="supplier-description-ar">
+                      Description (Arabic)
+                    </Label>
+                    <Textarea
+                      id="supplier-description-ar"
+                      value={selectedSupplier.description_ar || ""}
+                      onChange={(e) =>
+                        setSelectedSupplier({
+                          ...selectedSupplier,
+                          description_ar: e.target.value,
+                        })
+                      }
+                      placeholder="وصف موجز للمورد"
+                      dir="rtl"
+                    />
+                  </div>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -357,7 +437,66 @@ const SupplierManagement = () => {
                       }
                       placeholder="https://example.com/logo.png"
                     />
-                    <Button variant="outline" size="icon">
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      type="button"
+                      onClick={() => {
+                        // Open file dialog
+                        const input = document.createElement("input");
+                        input.type = "file";
+                        input.accept = "image/*";
+                        input.onchange = async (e) => {
+                          const file = e.target.files?.[0];
+                          if (!file) return;
+
+                          // Upload to Supabase storage
+                          try {
+                            const fileExt = file.name.split(".").pop();
+                            const fileName = `supplier_${Math.random().toString(36).substring(2, 15)}_${Date.now()}.${fileExt}`;
+                            const filePath = `supplier-logos/${fileName}`;
+
+                            const { error, data } = await supabase.storage
+                              .from("images")
+                              .upload(filePath, file, {
+                                cacheControl: "3600",
+                                upsert: true,
+                                contentType: file.type,
+                              });
+
+                            if (error) throw error;
+
+                            // Get public URL
+                            const {
+                              data: { publicUrl },
+                            } = supabase.storage
+                              .from("images")
+                              .getPublicUrl(filePath);
+
+                            // Update supplier state
+                            setSelectedSupplier({
+                              ...selectedSupplier,
+                              logo_url: publicUrl,
+                            });
+
+                            toast({
+                              title: "Success",
+                              description:
+                                "Logo uploaded successfully. Remember to save your changes.",
+                            });
+                          } catch (err) {
+                            console.error("Error uploading logo:", err);
+                            toast({
+                              title: "Upload Failed",
+                              description:
+                                "Failed to upload logo. Please try again.",
+                              variant: "destructive",
+                            });
+                          }
+                        };
+                        input.click();
+                      }}
+                    >
                       <Upload className="h-4 w-4" />
                     </Button>
                   </div>
@@ -392,9 +531,9 @@ const SupplierManagement = () => {
                 <div className="pt-4 flex space-x-2">
                   <Button
                     onClick={handleSupplierSave}
-                    disabled={loading || !selectedSupplier.name}
+                    disabled={loading || !selectedSupplier.name || isValidating}
                   >
-                    {loading ? "Saving..." : "Save Changes"}
+                    {loading || isValidating ? "Saving..." : "Save Changes"}
                   </Button>
                   <Button
                     variant="outline"

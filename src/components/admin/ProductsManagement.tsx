@@ -51,16 +51,21 @@ import {
 import { toast } from "@/components/ui/use-toast";
 import { Progress } from "@/components/ui/progress";
 import { useProductValidation } from "@/hooks/useProductValidation";
+import { useBrands } from "@/hooks/useBrands";
+import { useNameValidation } from "@/hooks/useNameValidation";
 
 type Product = Tables<"products">;
 type Category = Tables<"categories">;
+type Brand = Tables<"brands">;
 
 const ITEMS_PER_PAGE = 5;
 
 const ProductsManagement = () => {
+  // Display products in a grid of 2 columns
   const [products, setProducts] = useState<Product[]>([]);
   const [allProducts, setAllProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
+  const { brands, loading: brandsLoading } = useBrands();
   const [loading, setLoading] = useState(true);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [newProduct, setNewProduct] = useState<Partial<Product>>({
@@ -77,6 +82,7 @@ const ProductsManagement = () => {
     regions: ["all"],
     discount: 0,
     delivery_time: "",
+    brand_id: null,
   });
   // State to control the visibility of the add product form
   const [isAdding, setIsAdding] = useState(false);
@@ -155,6 +161,8 @@ const ProductsManagement = () => {
 
   // Using the custom validation hook
   const { errors, validateForm, clearErrors } = useProductValidation();
+  const { checkNameUniqueness, isValidating: isNameValidating } =
+    useNameValidation();
 
   const uploadImage = async (file: File): Promise<string | null> => {
     try {
@@ -355,6 +363,22 @@ const ProductsManagement = () => {
   const handleAddProduct = async () => {
     if (!validateForm(newProduct)) return;
 
+    // Check name uniqueness
+    const { isUnique, field, message } = await checkNameUniqueness(
+      newProduct.name || "",
+      newProduct.name_ar,
+      "products",
+    );
+
+    if (!isUnique) {
+      toast({
+        title: "Validation Error",
+        description: message || "Product name must be unique",
+        variant: "destructive",
+      });
+      return;
+    }
+
     try {
       setIsSaving(true);
       console.log("Adding product:", newProduct);
@@ -399,6 +423,7 @@ const ProductsManagement = () => {
             regions: newProduct.regions || ["all"],
             discount: newProduct.discount || 0,
             delivery_time: newProduct.delivery_time || null,
+            brand_id: newProduct.brand_id || null, // Include brand_id in the insert
             slug: newProduct.name?.toLowerCase().replace(/\s+/g, "-") || "", // Generate slug from name
           },
         ])
@@ -426,6 +451,7 @@ const ProductsManagement = () => {
           regions: ["all"],
           discount: 0,
           delivery_time: "",
+          brand_id: null,
         });
         setIsAdding(false);
         toast({
@@ -447,6 +473,23 @@ const ProductsManagement = () => {
 
   const handleUpdateProduct = async () => {
     if (!editingProduct || !validateForm(editingProduct)) return;
+
+    // Check name uniqueness
+    const { isUnique, field, message } = await checkNameUniqueness(
+      editingProduct.name || "",
+      editingProduct.name_ar,
+      "products",
+      editingProduct.id,
+    );
+
+    if (!isUnique) {
+      toast({
+        title: "Validation Error",
+        description: message || "Product name must be unique",
+        variant: "destructive",
+      });
+      return;
+    }
 
     try {
       setIsSaving(true);
@@ -490,6 +533,7 @@ const ProductsManagement = () => {
           regions: editingProduct.regions || ["all"],
           discount: editingProduct.discount || 0,
           delivery_time: editingProduct.delivery_time || null,
+          brand_id: editingProduct.brand_id || null, // Include brand_id in the update
         })
         .eq("id", editingProduct.id)
         .select();
@@ -621,6 +665,7 @@ const ProductsManagement = () => {
       regions: ["all"],
       discount: 0,
       delivery_time: "",
+      brand_id: null,
     });
     clearErrors();
   };
@@ -826,6 +871,7 @@ const ProductsManagement = () => {
                   removeImage={removeImage}
                   onSave={handleAddProduct}
                   onCancel={handleCancelAdd}
+                  brands={brands}
                 />
               </CardContent>
             </Card>
@@ -862,117 +908,120 @@ const ProductsManagement = () => {
                   {selectedProducts.length} of {products.length} selected
                 </div>
               </div>
-              {products.map((product) => (
-                <Card
-                  key={product.id}
-                  className={`overflow-hidden ${selectedProducts.includes(product.id) ? "border-primary" : ""}`}
-                >
-                  {editingProduct?.id === product.id ? (
-                    <CardContent className="p-4">
-                      <ProductForm
-                        product={editingProduct}
-                        setProduct={setEditingProduct}
-                        categories={categories}
-                        errors={errors}
-                        isUploading={isUploading}
-                        uploadProgress={uploadProgress}
-                        isSaving={isSaving}
-                        fileInputRef={editFileInputRef}
-                        handleImageSelect={handleImageSelect}
-                        removeImage={removeImage}
-                        onSave={handleUpdateProduct}
-                        onCancel={handleCancelEdit}
-                        isEdit={true}
-                      />
-                    </CardContent>
-                  ) : (
-                    <CardContent className="p-4">
-                      <div className="flex items-start justify-between">
-                        <div className="flex items-start">
-                          <Checkbox
-                            id={`select-${product.id}`}
-                            className="mt-1 mr-3"
-                            checked={selectedProducts.includes(product.id)}
-                            onCheckedChange={() =>
-                              toggleProductSelection(product.id)
-                            }
-                          />
-                          <div className="flex-1">
-                            <div className="flex flex-col md:flex-row md:items-center md:justify-between">
-                              <div>
-                                <h3 className="text-lg font-semibold flex items-center">
-                                  {product.name}
-                                  {product.is_featured && (
-                                    <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-yellow-100 text-yellow-800">
-                                      Featured
-                                    </span>
-                                  )}
-                                </h3>
-                                <p className="text-sm text-muted-foreground">
-                                  SKU: {product.sku} • Category:{" "}
-                                  {getCategoryName(product.category_id)}
-                                </p>
-                              </div>
-                              <div className="mt-2 md:mt-0 flex items-center">
-                                <p className="text-lg font-bold">
-                                  ${product.price.toFixed(2)}
-                                </p>
-                                <p className="ml-4 text-sm">
-                                  Stock: {product.stock}
-                                </p>
-                              </div>
-                            </div>
-                            {product.description && (
-                              <p className="mt-2 text-sm line-clamp-2">
-                                {product.description}
-                              </p>
-                            )}
-                            {product.image_urls &&
-                              product.image_urls.length > 0 && (
-                                <div className="mt-4 flex space-x-2 overflow-x-auto pb-2">
-                                  {product.image_urls
-                                    .slice(0, 4)
-                                    .map((url, index) => (
-                                      <img
-                                        key={index}
-                                        src={url}
-                                        alt={`${product.name} image ${index + 1}`}
-                                        className="h-16 w-16 object-cover rounded-md flex-shrink-0"
-                                      />
-                                    ))}
-                                  {product.image_urls.length > 4 && (
-                                    <div className="h-16 w-16 bg-muted rounded-md flex items-center justify-center text-muted-foreground">
-                                      +{product.image_urls.length - 4}
-                                    </div>
-                                  )}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {products.map((product) => (
+                  <Card
+                    key={product.id}
+                    className={`overflow-hidden ${selectedProducts.includes(product.id) ? "border-primary" : ""}`}
+                  >
+                    {editingProduct?.id === product.id ? (
+                      <CardContent className="p-4">
+                        <ProductForm
+                          product={editingProduct}
+                          setProduct={setEditingProduct}
+                          categories={categories}
+                          errors={errors}
+                          isUploading={isUploading}
+                          uploadProgress={uploadProgress}
+                          isSaving={isSaving}
+                          fileInputRef={editFileInputRef}
+                          handleImageSelect={handleImageSelect}
+                          removeImage={removeImage}
+                          onSave={handleUpdateProduct}
+                          onCancel={handleCancelEdit}
+                          isEdit={true}
+                          brands={brands}
+                        />
+                      </CardContent>
+                    ) : (
+                      <CardContent className="p-4">
+                        <div className="flex items-start justify-between">
+                          <div className="flex items-start">
+                            <Checkbox
+                              id={`select-${product.id}`}
+                              className="mt-1 mr-3"
+                              checked={selectedProducts.includes(product.id)}
+                              onCheckedChange={() =>
+                                toggleProductSelection(product.id)
+                              }
+                            />
+                            <div className="flex-1">
+                              <div className="flex flex-col md:flex-row md:items-center md:justify-between">
+                                <div>
+                                  <h3 className="text-lg font-semibold flex items-center">
+                                    {product.name}
+                                    {product.is_featured && (
+                                      <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-yellow-100 text-yellow-800">
+                                        Featured
+                                      </span>
+                                    )}
+                                  </h3>
+                                  <p className="text-sm text-muted-foreground">
+                                    SKU: {product.sku} • Category:{" "}
+                                    {getCategoryName(product.category_id)}
+                                  </p>
                                 </div>
+                                <div className="mt-2 md:mt-0 flex items-center">
+                                  <p className="text-lg font-bold">
+                                    ${product.price.toFixed(2)}
+                                  </p>
+                                  <p className="ml-4 text-sm">
+                                    Stock: {product.stock}
+                                  </p>
+                                </div>
+                              </div>
+                              {product.description && (
+                                <p className="mt-2 text-sm line-clamp-2">
+                                  {product.description}
+                                </p>
                               )}
+                              {product.image_urls &&
+                                product.image_urls.length > 0 && (
+                                  <div className="mt-4 flex space-x-2 overflow-x-auto pb-2">
+                                    {product.image_urls
+                                      .slice(0, 4)
+                                      .map((url, index) => (
+                                        <img
+                                          key={index}
+                                          src={url}
+                                          alt={`${product.name} image ${index + 1}`}
+                                          className="h-16 w-16 object-cover rounded-md flex-shrink-0"
+                                        />
+                                      ))}
+                                    {product.image_urls.length > 4 && (
+                                      <div className="h-16 w-16 bg-muted rounded-md flex items-center justify-center text-muted-foreground">
+                                        +{product.image_urls.length - 4}
+                                      </div>
+                                    )}
+                                  </div>
+                                )}
+                            </div>
+                          </div>
+                          <div className="flex space-x-2 ml-4">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleEditClick(product)}
+                            >
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() =>
+                                setIsDeleteDialogOpen(true) ||
+                                setSelectedProducts([product.id])
+                              }
+                            >
+                              <Trash2 className="h-4 w-4 text-red-500" />
+                            </Button>
                           </div>
                         </div>
-                        <div className="flex space-x-2 ml-4">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => handleEditClick(product)}
-                          >
-                            <Edit className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() =>
-                              setIsDeleteDialogOpen(true) ||
-                              setSelectedProducts([product.id])
-                            }
-                          >
-                            <Trash2 className="h-4 w-4 text-red-500" />
-                          </Button>
-                        </div>
-                      </div>
-                    </CardContent>
-                  )}
-                </Card>
-              ))}
+                      </CardContent>
+                    )}
+                  </Card>
+                ))}
+              </div>
             </div>
           )}
 

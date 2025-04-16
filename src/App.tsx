@@ -35,10 +35,14 @@ const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
 };
 
 const AdminRoute = ({ children }: ProtectedRouteProps) => {
-  const { isLoading } = useAuth();
+  const { isAuthenticated, isLoading } = useAuth();
 
   if (isLoading) {
     return <p>Loading...</p>;
+  }
+
+  if (!isAuthenticated) {
+    return <Navigate to="/login" state={{ from: window.location.pathname }} />;
   }
 
   return <>{children}</>;

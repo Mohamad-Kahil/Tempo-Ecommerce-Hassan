@@ -31,6 +31,7 @@ import SupplierManagement from "./SupplierManagement";
 import Categories from "./Categories";
 import ProductsManagementStoryboard from "./ProductsManagementStoryboard";
 import HomepageLayoutManager from "./HomepageLayoutManager";
+import BrandsManagement from "./BrandsManagement";
 
 const AdminDashboard = () => {
   const { user, isAuthenticated, isAdmin, isLoading, userRole } = useAuth();
@@ -85,6 +86,14 @@ const AdminDashboard = () => {
                     >
                       <ShoppingBag className="mr-2 h-4 w-4" />
                       Products
+                    </Button>
+                    <Button
+                      variant={activeTab === "brands" ? "default" : "ghost"}
+                      className="w-full justify-start"
+                      onClick={() => setActiveTab("brands")}
+                    >
+                      <BookOpen className="mr-2 h-4 w-4" />
+                      Brands
                     </Button>
                     <Button
                       variant={activeTab === "categories" ? "default" : "ghost"}
@@ -207,6 +216,21 @@ const AdminDashboard = () => {
               )}
 
               {activeTab === "products" && <ProductsManagementStoryboard />}
+
+              {activeTab === "brands" && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Brand Management</CardTitle>
+                    <CardDescription>
+                      Manage brands for your products and link them to
+                      suppliers.
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <BrandsManagement />
+                  </CardContent>
+                </Card>
+              )}
 
               {activeTab === "categories" && <Categories />}
 
